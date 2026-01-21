@@ -15,3 +15,4 @@ celery
 redis
 django-celery-beat
 gunicorn
+whitenoise

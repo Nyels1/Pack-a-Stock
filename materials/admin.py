@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Category, Location, Material
 
 
@@ -64,7 +65,7 @@ class MaterialAdmin(admin.ModelAdmin):
     ]
     search_fields = ['name', 'description', 'sku', 'barcode', 'qr_code', 'account__company_name']
     readonly_fields = [
-        'qr_code', 'created_at', 'updated_at', 'is_consumable',
+        'qr_code', 'qr_image', 'created_at', 'updated_at', 'is_consumable',
         'can_be_loaned', 'is_low_stock', 'needs_reorder'
     ]
     
@@ -73,7 +74,7 @@ class MaterialAdmin(admin.ModelAdmin):
             'fields': ('account', 'category', 'location', 'name', 'description')
         }),
         ('Códigos', {
-            'fields': ('sku', 'barcode', 'qr_code')
+            'fields': ('sku', 'barcode', 'qr_code', 'qr_image')
         }),
         ('Inventario', {
             'fields': (
@@ -107,3 +108,9 @@ class MaterialAdmin(admin.ModelAdmin):
         return obj.is_low_stock
     is_low_stock.boolean = True
     is_low_stock.short_description = 'Stock Bajo'
+
+    def qr_image(self, obj):
+        if obj.qr_image:
+            return format_html('<img src="{}" style="max-height:180px;"/>', obj.qr_image.url)
+        return '-'
+    qr_image.short_description = 'QR'

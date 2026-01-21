@@ -1,7 +1,17 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.core.files.base import ContentFile
 from accounts.models import Account
 import uuid
+from io import BytesIO
+import qrcode
+
+
+def qr_upload_to(instance, filename):
+    """Ruta para almacenar imagen PNG del QR por cuenta y código"""
+    code = getattr(instance, 'qr_code', None) or filename
+    account_id = instance.account.id if getattr(instance, 'account', None) else 'unknown'
+    return f"qr_codes/{account_id}/{code}.png"
 
 
 class Category(models.Model):
@@ -108,6 +118,9 @@ class Material(models.Model):
     # Para consumibles: QR por lote
     # Para materiales regulares: QR individual
     qr_code = models.CharField(max_length=100, unique=True, editable=False)
+    # Imagen PNG del QR (por lote para consumibles)
+    qr_image = models.ImageField(upload_to=qr_upload_to,
+                                 blank=True, null=True)
     
     # Inventario
     quantity = models.IntegerField(default=1, validators=[MinValueValidator(0)])
@@ -161,15 +174,38 @@ class Material(models.Model):
 
     def save(self, *args, **kwargs):
         # Generar QR code único si no existe
+        created_qr = False
         if not self.qr_code:
             self.qr_code = f"MAT-{uuid.uuid4().hex[:12].upper()}"
-        
+            created_qr = True
+
         # Actualizar available_quantity basado en el status
         if self.status in ['damaged', 'retired', 'maintenance']:
             self.available_quantity = 0
             self.is_available_for_loan = False
-        
+
+        # Guardar primero para disponer de ID y ruta de almacenamiento
         super().save(*args, **kwargs)
+
+        # Generar imagen PNG del QR si aún no existe (o si acabamos de crear el qr)
+        try:
+            if (created_qr or not self.qr_image) and self.qr_code:
+                qr = qrcode.QRCode(box_size=8, border=2)
+                qr.add_data(self.qr_code)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+                buffer = BytesIO()
+                img.save(buffer, format='PNG')
+                buffer.seek(0)
+                file_name = f"{self.qr_code}.png"
+                # Use save=False para evitar recursión
+                self.qr_image.save(file_name, ContentFile(buffer.read()), save=False)
+                buffer.close()
+                # Guardar cambios de campo qr_image
+                super().save(update_fields=['qr_image'])
+        except Exception:
+            # No detener el flujo si falla la generación de la imagen
+            pass
 
     @property
     def is_low_stock(self):
