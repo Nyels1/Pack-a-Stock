@@ -1,18 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Account, User
-
-
-class AccountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Account
-        fields = [
-            'id', 'company_name', 'street', 'exterior_number', 'interior_number',
-            'neighborhood', 'postal_code', 'city', 'state', 'country', 'phone',
-            'email', 'subscription_plan', 'max_locations', 'max_users', 'is_active',
-            'subscription_start_date', 'subscription_end_date', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'max_locations', 'max_users']
+from accounts.models import User
+from accounts.Serializers.account_serializer import AccountSerializer
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -54,53 +43,36 @@ class RegisterSerializer(serializers.Serializer):
     state = serializers.CharField(max_length=255, required=False, allow_blank=True)
     country = serializers.CharField(max_length=255, default='México')
     phone = serializers.CharField(max_length=50, required=False, allow_blank=True)
-    company_email = serializers.EmailField()
     subscription_plan = serializers.ChoiceField(choices=['freemium', 'premium'], default='freemium')
     
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Este email ya está registrado")
-        return value
-    
-    def validate_company_email(self, value):
-        if Account.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Este email de empresa ya está registrado")
-        return value
-    
     def create(self, validated_data):
+        # Extraer datos de la cuenta
         account_data = {
-            'company_name': validated_data['company_name'],
-            'email': validated_data['company_email'],
-            'street': validated_data.get('street', ''),
-            'exterior_number': validated_data.get('exterior_number', ''),
-            'interior_number': validated_data.get('interior_number', ''),
-            'neighborhood': validated_data.get('neighborhood', ''),
-            'postal_code': validated_data.get('postal_code', ''),
-            'city': validated_data.get('city', ''),
-            'state': validated_data.get('state', ''),
-            'country': validated_data.get('country', 'México'),
-            'phone': validated_data.get('phone', ''),
-            'subscription_plan': validated_data.get('subscription_plan', 'freemium'),
+            'company_name': validated_data.pop('company_name'),
+            'street': validated_data.pop('street', ''),
+            'exterior_number': validated_data.pop('exterior_number', ''),
+            'interior_number': validated_data.pop('interior_number', ''),
+            'neighborhood': validated_data.pop('neighborhood', ''),
+            'postal_code': validated_data.pop('postal_code', ''),
+            'city': validated_data.pop('city', ''),
+            'state': validated_data.pop('state', ''),
+            'country': validated_data.pop('country', 'México'),
+            'phone': validated_data.pop('phone', ''),
+            'email': validated_data['email'],
+            'subscription_plan': validated_data.pop('subscription_plan', 'freemium'),
         }
         
-        if account_data['subscription_plan'] == 'freemium':
-            account_data['max_locations'] = 1
-            account_data['max_users'] = 5
-        else:
-            account_data['max_locations'] = -1
-            account_data['max_users'] = -1
-        
+        # Crear cuenta
         account = Account.objects.create(**account_data)
         
+        # Crear usuario administrador
         user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            full_name=validated_data['full_name'],
+            account=account,
             user_type='inventarista',
-            account=account
+            **validated_data
         )
         
-        return {'account': account, 'user': user}
+        return user
 
 
 class LoginSerializer(serializers.Serializer):
@@ -112,15 +84,18 @@ class LoginSerializer(serializers.Serializer):
         password = data.get('password')
         
         if email and password:
-            user = authenticate(email=email, password=password)
+            user = authenticate(request=self.context.get('request'), username=email, password=password)
+            
             if not user:
-                raise serializers.ValidationError("Credenciales inválidas")
+                raise serializers.ValidationError('Credenciales inválidas')
+            
             if not user.is_active:
-                raise serializers.ValidationError("Usuario inactivo")
+                raise serializers.ValidationError('Usuario inactivo')
+            
             if user.is_blocked:
-                raise serializers.ValidationError("Usuario bloqueado")
+                raise serializers.ValidationError('Usuario bloqueado')
         else:
-            raise serializers.ValidationError("Debe incluir email y contraseña")
+            raise serializers.ValidationError('Email y contraseña son requeridos')
         
         data['user'] = user
         return data
