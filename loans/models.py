@@ -305,6 +305,7 @@ class LoanExtension(models.Model):
         ('rejected', 'Rechazada'),
     ]
     
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='loan_extensions')
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, related_name='extensions')
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='extension_requests')
     
@@ -340,6 +341,12 @@ class LoanExtension(models.Model):
 
     def __str__(self):
         return f"Extensión #{self.id} - Préstamo #{self.loan.id} ({self.get_status_display()})"
+    
+    def save(self, *args, **kwargs):
+        # Auto-asignar account del loan si no existe
+        if not self.account_id and self.loan_id:
+            self.account = self.loan.account
+        super().save(*args, **kwargs)
 
     def approve(self, inventarista, notes=''):
         """Aprobar la extensión"""

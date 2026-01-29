@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'accounts',
     'materials',
     'loans',
+    'audit',
+    'labels',
 ]
 
 MIDDLEWARE = [

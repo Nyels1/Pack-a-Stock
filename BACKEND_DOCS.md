@@ -3,14 +3,14 @@
 ## Resumen Ejecutivo
 
 **Estado del Proyecto:** TODOS LOS MODELOS PROBADOS Y FUNCIONANDO  
-**Fecha:** 28 de Enero, 2026  
+**Fecha:** 29 de Enero, 2026  
 **Version:** 1.0.0
 
 ### Metricas de Pruebas
 
-- Modelos Totales: 9
-- Modelos Probados: 9 (100%)
-- Metodos Probados: 8 (100%)
+- Modelos Totales: 11
+- Modelos Probados: 11 (100%)
+- Metodos Probados: 11 (100%)
 - Casos de Prueba Exitosos: 100%
 
 ### Modelos Implementados
@@ -26,6 +26,8 @@
 | loans | LoanRequestItem | OK | clean (validacion) |
 | loans | Loan | OK | return_loan, update_material_availability |
 | loans | LoanExtension | OK | approve, reject |
+| audit | AuditLog | OK | log_action (classmethod) |
+| labels | LabelTemplate | OK | get_default_layout, get_default_print_settings |
 
 ### Tecnologias Utilizadas
 
@@ -35,6 +37,31 @@
 - Python 3.13
 - JWT Authentication
 - qrcode + Pillow (generacion QR)
+- AWS S3 (archivos media)
+- Gunicorn (servidor WSGI)
+- WhiteNoise (archivos estaticos)
+- Celery + Redis (tareas asincronas)
+
+---
+
+## Deployment a Produccion
+
+**ARCHIVOS CRITICOS CREADOS:**
+- `Procfile` - Comandos para plataformas cloud (Railway, Render, Heroku)
+- `runtime.txt` - Especifica Python 3.13.1
+- `.env.production` - Template de variables de entorno de produccion
+- `DEPLOYMENT.md` - Guia completa paso a paso
+
+**CHECKLIST PRE-DEPLOYMENT:**
+1. Cambiar SECRET_KEY en produccion
+2. DEBUG=False
+3. Configurar ALLOWED_HOSTS con tu dominio
+4. Configurar DATABASE_URL con PostgreSQL
+5. Configurar AWS S3 para archivos media (QR codes)
+6. Cambiar credenciales de superadmin
+7. Configurar CORS_ALLOWED_ORIGINS con frontend
+
+Ver [DEPLOYMENT.md](DEPLOYMENT.md) para instrucciones detalladas.
 
 ---
 
@@ -704,7 +731,166 @@ Locations: 1 (Almacen Central)
 Materials: 2 (Taladro Electrico + Papel Bond)
 LoanRequests: 3 (2 aprobadas + 1 rechazada)
 LoanRequestItems: 4
-Loans: 3 (2 no consumibles + 1 consumible)
+Loans: 5
+LoanExtensions: 4 (2 aprobadas + 1 rechazada)
+AuditLogs: 4+ (Login, Create, Stock Update, Loan Issue)
+LabelTemplates: 2 (Estandar, Compacta)
+```
+
+---
+
+## 10. MODELO: AuditLog
+
+**Ubicacion:** `audit/models.py`  
+**Proposito:** Registro completo de auditoria de todas las acciones del sistema  
+**Tipo:** Modelo de Auditoria
+
+### Campos
+
+| Campo | Tipo | Descripcion | Restricciones |
+|-------|------|-------------|---------------|
+| account | FK(Account) | Cuenta a la que pertenece el log | SET_NULL, null=True |
+| user | FK(User) | Usuario que realizo la accion | SET_NULL, null=True |
+| action | CharField | Tipo de accion realizada | choices=ACTION_CHOICES, max_length=100 |
+| table_name | CharField | Nombre de la tabla afectada | null=True, blank=True, max_length=100 |
+| record_id | IntegerField | ID del registro afectado | null=True, blank=True |
+| changes | JSONField | Cambios realizados en formato JSON | null=True, blank=True |
+| ip_address | GenericIPAddressField | Direccion IP del usuario | null=True, blank=True |
+| user_agent | TextField | Informacion del navegador/cliente | null=True, blank=True |
+| description | TextField | Descripcion adicional de la accion | null=True, blank=True |
+| created_at | DateTimeField | Timestamp de cuando se creo el log | auto_now_add=True |
+
+### Acciones Disponibles (ACTION_CHOICES)
+
+- create: Crear
+- update: Actualizar
+- delete: Eliminar
+- login: Inicio de sesion
+- logout: Cierre de sesion
+- approve: Aprobar
+- reject: Rechazar
+- loan_issue: Prestamo emitido
+- loan_return: Prestamo devuelto
+- extension_request: Solicitud de extension
+- extension_approved: Extension aprobada
+- extension_rejected: Extension rechazada
+- material_consume: Material consumido
+- stock_update: Actualizacion de stock
+
+### Metodos
+
+#### log_action(cls, action, user=None, account=None, ...)
+**Tipo:** @classmethod  
+**Descripcion:** Metodo helper para crear logs de auditoria de manera sencilla
+
+**Parametros:**
+- action (str): Tipo de accion (debe estar en ACTION_CHOICES)
+- user (User, opcional): Usuario que realiza la accion
+- account (Account, opcional): Cuenta asociada
+- table_name (str, opcional): Nombre de la tabla afectada
+- record_id (int, opcional): ID del registro afectado
+- changes (dict, opcional): Diccionario con los cambios realizados
+- ip_address (str, opcional): IP del cliente
+- user_agent (str, opcional): User agent del cliente
+- description (str, opcional): Descripcion adicional
+
+**Retorna:** Instancia de AuditLog creada
+
+**Ejemplo de uso:**
+```python
+# Registrar inicio de sesion
+AuditLog.log_action(
+    action='login',
+    user=request.user,
+    account=request.user.account,
+    ip_address=request.META.get('REMOTE_ADDR'),
+    description=f'Usuario {request.user.full_name} inicio sesion'
+)
+
+# Registrar creacion de material
+AuditLog.log_action(
+    action='create',
+    user=request.user,
+    account=material.account,
+    table_name='materials',
+    record_id=material.id,
+    changes={'name': material.name, 'sku': material.sku},
+    description=f'Material {material.name} creado'
+)
+
+# Registrar actualizacion de stock
+AuditLog.log_action(
+    action='stock_update',
+    user=request.user,
+    account=material.account,
+    table_name='materials',
+    record_id=material.id,
+    changes={
+        'previous_quantity': 100,
+        'new_quantity': 90,
+        'difference': -10
+    },
+    description=f'Stock de {material.name} actualizado'
+)
+```
+
+### Relaciones
+
+- **account** a Account: Muchos logs pertenecen a una cuenta (related_name='audit_logs')
+- **user** a User: Muchos logs pertenecen a un usuario (related_name='audit_logs')
+
+### Indices
+
+- Index en (account, created_at): Optimiza consultas de logs por cuenta y fecha
+- Index en (user, created_at): Optimiza consultas de logs por usuario y fecha
+- Index en (action): Optimiza filtrado por tipo de accion
+- Index en (table_name, record_id): Optimiza busqueda de logs de un registro especifico
+- Index en (created_at): Optimiza ordenamiento cronologico
+
+### Casos de Uso
+
+1. **Auditoria de Acceso:** Registrar logins/logouts, rastrear IPs y user agents, detectar accesos no autorizados
+
+2. **Trazabilidad de Cambios:** Historial completo de modificaciones, quien cambio que y cuando
+
+3. **Compliance y Regulaciones:** Cumplimiento normativo, reportes de auditoria, evidencia para auditorias externas
+
+4. **Debugging y Soporte:** Investigar problemas reportados, reconstruir secuencia de eventos
+
+5. **Seguridad:** Detectar actividad sospechosa, alertas de acciones criticas
+
+### Prueba del Modelo - AuditLog
+
+**Fecha:** 29 de Enero, 2026
+
+```
+[1/6] PROBANDO log_action() - Login
+  + Log creado: login - Juan Perez - 2026-01-29 04:29
+    - Accion: Inicio de sesion
+    - Usuario: Juan Perez
+    - IP: 192.168.1.100
+
+[2/6] PROBANDO log_action() - Material Creado
+  + Log creado: create - Administrator - 2026-01-29 04:29
+    - Tabla: materials, Record ID: 2
+    - Cambios: {'name': 'Papel Bond', 'sku': 'PAP-001', 'quantity': 75}
+
+[3/6] PROBANDO log_action() - Stock Actualizado
+  + Log creado: stock_update - Administrator - 2026-01-29 04:29
+
+[4/6] PROBANDO log_action() - Prestamo Emitido
+  + Log creado: loan_issue - Administrator - 2026-01-29 04:29
+    - Cambios: borrower, material, quantity, expected_return_date
+
+[RELACIONES] Verificando relaciones
+  + Total logs de la cuenta: 4
+  + Logs del admin: 3
+  + Logs del empleado: 1
+
+RESUMEN FINAL
+  Total AuditLogs: 4
+  Acciones diferentes: 4
+  Tablas auditadas: 2
 ```
 
 ---
@@ -713,7 +899,7 @@ Loans: 3 (2 no consumibles + 1 consumible)
 
 ### Todas las pruebas de modelos completadas!
 
-**Modelos probados (9/9):**
+**Modelos probados (11/11):**
 1. Account - OK
 2. User - OK
 3. Category - OK
@@ -723,6 +909,8 @@ Loans: 3 (2 no consumibles + 1 consumible)
 7. LoanRequestItem - OK
 8. Loan - OK
 9. LoanExtension - OK
+10. AuditLog - OK
+11. LabelTemplate - OK
 
 ### Prueba de LoanExtension - Resultados
 
@@ -829,8 +1017,10 @@ RESULTADO: MODELO LoanExtension PROBADO EXITOSAMENTE!
 - [x] Indices de BD optimizados
 - [x] Pruebas de modelos ejecutadas exitosamente
 - [x] Base de datos SQLite creada
-- [x] 9 de 9 modelos probados completamente
+- [x] 11 de 11 modelos probados completamente
 - [x] LoanExtension probado y funcionando
+- [x] AuditLog probado y funcionando
+- [x] LabelTemplate probado y funcionando
 - [ ] Serializers completados
 - [ ] Viewsets completados
 - [ ] Endpoints REST API documentados
@@ -877,11 +1067,146 @@ Los materiales consumibles se identifican por su categoria:
 
 **TODOS LOS MODELOS PROBADOS Y FUNCIONANDO CORRECTAMENTE**
 
-**Ultima actualizacion:** 28 de Enero, 2026  
+**Ultima actualizacion:** 29 de Enero, 2026  
 **Version del Backend:** 1.0.0  
 **Django:** 5.0  
 **Python:** 3.13  
-**Total de Modelos:** 9 de 9 probados  
-**Total de Metodos:** 8 de 8 probados  
+**Total de Modelos:** 11 de 11 probados  
+**Total de Metodos:** 11 de 11 probados  
 **Estado:** Todos los tests pasaron exitosamente
+
+---
+
+## 11. MODELO: LabelTemplate
+
+**Ubicacion:** `labels/models.py`  
+**Proposito:** Plantillas personalizadas para etiquetas QR de materiales  
+**Tipo:** Modelo de Configuracion
+
+### Campos
+
+| Campo | Tipo | Descripcion | Restricciones |
+|-------|------|-------------|---------------|
+| account | FK(Account) | Cuenta a la que pertenece la plantilla | CASCADE |
+| name | CharField | Nombre de la plantilla | max_length=255 |
+| logo_url | URLField | URL del logo para la etiqueta | null=True, blank=True |
+| layout | JSONField | Configuracion del layout en JSON | default=dict |
+| is_default | BooleanField | Plantilla por defecto para la cuenta | default=False |
+| width_mm | IntegerField | Ancho de la etiqueta en mm | default=50 |
+| height_mm | IntegerField | Alto de la etiqueta en mm | default=30 |
+| print_settings | JSONField | Configuracion de impresion | default=dict, blank=True |
+| is_active | BooleanField | Plantilla activa | default=True |
+| created_at | DateTimeField | Fecha de creacion | auto_now_add=True |
+| updated_at | DateTimeField | Fecha de ultima actualizacion | auto_now=True |
+
+### Opciones de Layout (LAYOUT_CHOICES)
+
+- standard: Estandar
+- compact: Compacto
+- detailed: Detallado
+- custom: Personalizado
+
+### Metodos
+
+#### get_default_layout()
+**Descripcion:** Retorna layout por defecto si no existe configuracion
+
+**Retorna:** Dict con configuracion de layout
+```python
+{
+    "type": "standard",
+    "show_logo": True,
+    "show_company_name": True,
+    "show_material_name": True,
+    "show_sku": True,
+    "show_category": False,
+    "show_location": False,
+    "qr_size": "medium",
+    "text_size": "small",
+    "custom_fields": []
+}
+```
+
+#### get_default_print_settings()
+**Descripcion:** Retorna configuracion de impresion por defecto
+
+**Retorna:** Dict con configuracion de impresion
+```python
+{
+    "dpi": 300,
+    "paper_size": "A4",
+    "labels_per_sheet": 21,
+    "margin_top": 10,
+    "margin_left": 10,
+    "margin_right": 10,
+    "margin_bottom": 10
+}
+```
+
+#### save(*args, **kwargs)
+**Descripcion:** Sobrescribe save para auto-exclusion de is_default  
+**Comportamiento:** Si se marca como default, quita el default de las demas plantillas de la misma cuenta
+
+### Relaciones
+
+- **account** a Account: Muchas plantillas pertenecen a una cuenta (related_name='label_templates')
+
+### Indices
+
+- Index en (account, is_active): Optimiza consultas de plantillas activas por cuenta
+- Index en (account, is_default): Optimiza busqueda de plantilla default por cuenta
+
+### Casos de Uso
+
+1. **Personalizacion de Etiquetas:** Crear diferentes formatos de etiquetas segun necesidades
+2. **Multi-formato:** Estandar para almacen, compacto para estanterias
+3. **Branding:** Incluir logos y colores corporativos
+4. **Impresion Optimizada:** Configuracion especifica por tipo de impresora
+5. **Flexibilidad:** Layouts personalizados con campos custom
+
+### Prueba del Modelo - LabelTemplate
+
+**Fecha:** 29 de Enero, 2026
+
+```
+[1/5] CREANDO PLANTILLA ESTANDAR
+  + Plantilla: Plantilla Estandar (Por defecto) - Pack-a-Stock Admin
+    - Es default: True
+    - Dimensiones: 50x30mm
+    - Layout type: standard
+
+[2/5] CREANDO PLANTILLA COMPACTA
+  + Plantilla: Plantilla Compacta - Pack-a-Stock Admin
+    - Es default: False
+    - Dimensiones: 40x25mm
+
+[3/5] PROBANDO get_default_layout()
+  + Layout de Plantilla Estandar:
+    - Tipo: standard
+    - Mostrar logo: True
+    - Mostrar nombre empresa: True
+    - Tamano QR: medium
+
+[4/5] PROBANDO get_default_print_settings()
+  + Configuracion de impresion:
+    - DPI: 300
+    - Tamano papel: A4
+    - Etiquetas por hoja: 21
+
+[5/5] PROBANDO Auto-exclusion de is_default
+  + Antes: Estandar=True, Compacta=False
+  + Despues de marcar Compacta como default:
+    - Estandar=False, Compacta=True
+
+[RELACIONES]
+  + Total plantillas de la cuenta: 2
+  + Plantilla default: Plantilla Compacta (Por defecto)
+
+RESUMEN FINAL
+  Total LabelTemplates: 2
+  Templates activos: 2
+  Templates default: 1
+```
+
+---
 

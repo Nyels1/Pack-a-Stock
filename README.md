@@ -5,8 +5,8 @@ Sistema de gestion de inventario y prestamos desarrollado con Django REST Framew
 ## Estado del Proyecto
 
 **VERSION:** 1.0.0  
-**ESTADO:** Modelos completados y probados (9/9)  
-**FECHA:** 28 de Enero, 2026
+**ESTADO:** Modelos completados y probados (11/11)  
+**FECHA:** 29 de Enero, 2026
 
 ## Inicio Rapido
 
@@ -72,6 +72,8 @@ Pack-a-Stock/
 ├── accounts/          # Gestion de cuentas y usuarios
 ├── materials/         # Gestion de inventario
 ├── loans/            # Gestion de prestamos
+├── audit/            # Registros de auditoria
+├── labels/           # Plantillas de etiquetas QR
 ├── pack_a_stock_api/ # Configuracion principal
 └── BACKEND_DOCS.md   # Documentacion completa
 ```
@@ -92,6 +94,12 @@ Pack-a-Stock/
 - LoanRequestItem: Items en solicitudes
 - Loan: Prestamos activos
 - LoanExtension: Extensiones de prestamos
+
+### audit
+- AuditLog: Registro de auditoria de todas las acciones del sistema
+
+### labels
+- LabelTemplate: Plantillas personalizadas para etiquetas QR
 
 ## Caracteristicas Principales
 
@@ -126,12 +134,28 @@ Consulta [BACKEND_DOCS.md](BACKEND_DOCS.md) para documentacion completa de:
 
 Todos los modelos han sido probados exhaustivamente:
 
-- 9 modelos probados (100%)
-- 8 metodos probados (100%)
+- 11 modelos probados (100%)
+- 11 metodos probados (100%)
 - Validaciones verificadas
 - Relaciones confirmadas
+- Auditoria implementada
 
 Ver resultados completos en BACKEND_DOCS.md
+
+## Deployment a Produccion
+
+Antes de subir a la nube, asegurate de:
+
+1. Configurar variables de entorno en `.env.production`
+2. Cambiar SECRET_KEY y credenciales de admin
+3. Configurar PostgreSQL y AWS S3
+4. Revisar [DEPLOYMENT.md](DEPLOYMENT.md) para guia completa
+
+**Archivos criticos:**
+- `Procfile` - Comandos para Railway/Render/Heroku
+- `runtime.txt` - Version de Python
+- `.env.production` - Variables de entorno de produccion
+- `DEPLOYMENT.md` - Guia completa de deployment
 
 ## Comandos Utiles
 

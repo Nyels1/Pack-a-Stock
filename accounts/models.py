@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 
@@ -61,7 +61,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser):
     USER_TYPE_CHOICES = [
         ('inventarista', 'Inventarista'),
         ('employee', 'Empleado'),
@@ -80,6 +80,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -101,4 +102,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def __str__(self):
         return f"{self.full_name} ({self.email})"
+    
+    def has_perm(self, perm, obj=None):
+        """Superusers tienen todos los permisos"""
+        return self.is_superuser
+    
+    def has_module_perms(self, app_label):
+        """Superusers tienen permisos en todos los módulos"""
+        return self.is_superuser
 
