@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    'storages',
+    # 'storages',  # Descomentar cuando se configure AWS S3
     
     # Local apps
     'accounts',
