@@ -58,6 +58,21 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         
+        # Si no se proporciona un account, crear o reutilizar uno por defecto
+        if 'account' not in extra_fields or extra_fields['account'] is None:
+            # Intentar obtener la cuenta admin existente o crearla
+            admin_account, created = Account.objects.get_or_create(
+                email='admin@pack-a-stock.com',
+                defaults={
+                    'company_name': 'Cuenta Admin',
+                    'subscription_plan': 'premium',
+                    'max_locations': 999,
+                    'max_users': 999,
+                    'is_active': True,
+                }
+            )
+            extra_fields['account'] = admin_account
+        
         return self.create_user(email, password, **extra_fields)
 
 
