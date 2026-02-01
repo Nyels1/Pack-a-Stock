@@ -95,10 +95,16 @@ WSGI_APPLICATION = 'pack_a_stock_api.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.parse(
-        config('DATABASE_URL', default='postgresql://postgres:12345678@localhost:5432/packastock')
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': '5432',
+    }
 }
+
 
 
 # Password validation
