@@ -12,4 +12,4 @@ class LocationSerializer(serializers.ModelSerializer):
             'interior_number', 'neighborhood', 'postal_code', 'city', 'state',
             'country', 'is_active', 'full_address', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'full_address', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'account', 'full_address', 'created_at', 'updated_at']

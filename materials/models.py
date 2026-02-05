@@ -111,7 +111,7 @@ class Material(models.Model):
     # Información básica
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    sku = models.CharField(max_length=100, unique=True)
+    sku = models.CharField(max_length=100, unique=True, blank=True)
     barcode = models.CharField(max_length=100, blank=True, null=True)
     
     # Código QR único generado automáticamente
@@ -173,6 +173,13 @@ class Material(models.Model):
         return self.category.is_consumable if self.category else False
 
     def save(self, *args, **kwargs):
+        # Generar SKU único si no existe
+        if not self.sku:
+            # Generar SKU basado en categoría y timestamp
+            timestamp = uuid.uuid4().hex[:8].upper()
+            category_prefix = self.category.name[:3].upper() if self.category else "MAT"
+            self.sku = f"{category_prefix}-{timestamp}"
+        
         # Generar QR code único si no existe
         created_qr = False
         if not self.qr_code:

@@ -23,20 +23,23 @@ class MaterialSerializer(serializers.ModelSerializer):
             'can_be_loaned', 'needs_reorder', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'qr_code', 'qr_image', 'available_quantity', 'is_consumable',
+            'id', 'account', 'qr_code', 'qr_image', 'available_quantity', 'is_consumable',
             'is_low_stock', 'can_be_loaned', 'needs_reorder', 'created_at', 'updated_at'
         ]
 
 
 class MaterialCreateSerializer(serializers.ModelSerializer):
+    sku = serializers.CharField(required=False, allow_blank=True)
+    
     class Meta:
         model = Material
         fields = [
-            'account', 'category', 'location', 'name', 'description', 'sku',
+            'category', 'location', 'name', 'description', 'sku',
             'barcode', 'quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image_url', 'status', 'is_available_for_loan',
             'requires_facial_auth', 'is_active'
         ]
+        read_only_fields = []
 
 
 class MaterialMinimalSerializer(serializers.ModelSerializer):

@@ -9,4 +9,4 @@ class CategorySerializer(serializers.ModelSerializer):
             'id', 'account', 'name', 'description', 'is_consumable', 
             'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'account', 'created_at', 'updated_at']
