@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from accounts.models import User
+from accounts.models import User, Account
 from accounts.Serializers.account_serializer import AccountSerializer
 
 
@@ -30,10 +30,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
+    # Datos del usuario
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
     full_name = serializers.CharField(max_length=255)
+    
+    # Datos de la empresa
     company_name = serializers.CharField(max_length=255)
+    phone = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Dirección
     street = serializers.CharField(max_length=255, required=False, allow_blank=True)
     exterior_number = serializers.CharField(max_length=50, required=False, allow_blank=True)
     interior_number = serializers.CharField(max_length=50, required=False, allow_blank=True)
@@ -42,37 +48,45 @@ class RegisterSerializer(serializers.Serializer):
     city = serializers.CharField(max_length=255, required=False, allow_blank=True)
     state = serializers.CharField(max_length=255, required=False, allow_blank=True)
     country = serializers.CharField(max_length=255, default='México')
-    phone = serializers.CharField(max_length=50, required=False, allow_blank=True)
-    subscription_plan = serializers.ChoiceField(choices=['freemium', 'premium'], default='freemium')
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        if Account.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Este correo electrónico ya está registrado")
+        return value
     
     def create(self, validated_data):
-        # Extraer datos de la cuenta
-        account_data = {
-            'company_name': validated_data.pop('company_name'),
-            'street': validated_data.pop('street', ''),
-            'exterior_number': validated_data.pop('exterior_number', ''),
-            'interior_number': validated_data.pop('interior_number', ''),
-            'neighborhood': validated_data.pop('neighborhood', ''),
-            'postal_code': validated_data.pop('postal_code', ''),
-            'city': validated_data.pop('city', ''),
-            'state': validated_data.pop('state', ''),
-            'country': validated_data.pop('country', 'México'),
-            'phone': validated_data.pop('phone', ''),
-            'email': validated_data['email'],
-            'subscription_plan': validated_data.pop('subscription_plan', 'freemium'),
-        }
-        
-        # Crear cuenta
-        account = Account.objects.create(**account_data)
-        
-        # Crear usuario administrador
-        user = User.objects.create_user(
-            account=account,
-            user_type='inventarista',
-            **validated_data
-        )
-        
-        return user
+        try:
+            # Crear cuenta con todos los datos
+            account = Account.objects.create(
+                company_name=validated_data.pop('company_name'),
+                email=validated_data['email'],
+                phone=validated_data.pop('phone', ''),
+                street=validated_data.pop('street', ''),
+                exterior_number=validated_data.pop('exterior_number', ''),
+                interior_number=validated_data.pop('interior_number', ''),
+                neighborhood=validated_data.pop('neighborhood', ''),
+                postal_code=validated_data.pop('postal_code', ''),
+                city=validated_data.pop('city', ''),
+                state=validated_data.pop('state', ''),
+                country=validated_data.pop('country', 'México'),
+                subscription_plan='freemium'  # Default, el admin lo cambiará
+            )
+            
+            # Crear usuario administrador
+            user = User.objects.create_user(
+                account=account,
+                user_type='inventarista',
+                **validated_data
+            )
+            
+            return user
+        except Exception as e:
+            # Si algo falla, asegurar que la cuenta se elimine si fue creada
+            if 'account' in locals():
+                account.delete()
+            raise
 
 
 class LoginSerializer(serializers.Serializer):

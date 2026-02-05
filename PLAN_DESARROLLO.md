@@ -1,22 +1,539 @@
-# PLAN DE DESARROLLO - PACK-A-STOCK WEB (INVENTARISTAS)
+# PLAN DE DESARROLLO - PACK-A-STOCK (SISTEMA COMPLETO)
 
-## CONTEXTO DEL PROYECTO
+## ARQUITECTURA DEL SISTEMA
 
-Pack-a-Stock es un sistema SaaS multi-tenant para gestión de inventarios y préstamos de materiales empresariales. 
+Pack-a-Stock es un sistema SaaS multi-tenant para gestión de inventarios y préstamos de materiales empresariales.
 
-**IMPORTANTE:** La aplicación WEB es EXCLUSIVAMENTE para INVENTARISTAS (administradores). Los empleados solicitan préstamos desde una APP MÓVIL separada. En la web NO se solicitan préstamos, solo se ADMINISTRAN.
+### 🏗️ ESTRUCTURA DEL PROYECTO
+
+```
+GitHub/
+├── Pack-a-Stock/              # BACKEND (Django + DRF + PostgreSQL)
+│   ├── API REST para Frontend Web y App Móvil
+│   ├── Docker + docker-compose.yml
+│   ├── Variables de entorno (.env)
+│   └── Desplegable en dominio (producción)
+│
+└── Front_End_SaaS/            # FRONTEND WEB (Next.js + React)
+    ├── Interfaz para INVENTARISTAS únicamente
+    ├── Consume API del backend
+    ├── Variables de entorno (.env.local)
+    └── Desplegable en Vercel/Netlify o contenedor Docker
+```
+
+### 📱 TIPOS DE USUARIOS Y PLATAFORMAS
+
+**INVENTARISTAS (WEB):**
+- Acceso: `Front_End_SaaS` (aplicación web)
+- Funciones: Administración completa del sistema
+- Aprueban/rechazan solicitudes de préstamos
+- Gestionan inventario, usuarios, reportes
+
+**EMPLEADOS (MÓVIL):**
+- Acceso: App Móvil nativa (React Native / Flutter - FUTURA)
+- Funciones: Solicitar préstamos, ver historial, escanear QR
+- NO tienen acceso a la web administrativa
+- Solicitudes enviadas vía API al backend
 
 ### Modelo de Negocio
 - **Multi-tenant:** Cada empresa (Account) tiene datos aislados
 - **Planes:** Freemium (1 ubicación, 5 usuarios) / Premium (ilimitado)
-- **Usuarios web:** Solo inventaristas (rol administrativo)
-- **Usuarios mobile:** Empleados que solicitan materiales (NO acceden a la web)
+- **Backend centralizado:** Una sola instancia sirve a todos los tenants
+- **Frontend separado:** Comunicación vía API REST con JWT
+
 
 ### Flujo Principal
-1. **Mobile:** Empleado solicita préstamo de materiales mediante app móvil
-2. **Web:** Inventarista revisa solicitud y aprueba/rechaza
-3. **Web:** Inventarista entrega material (escanea QR, registra firma digital)
-4. **Web:** Inventarista recibe devolución (escanea QR, verifica condición, registra firma)
+1. **Móvil:** Empleado solicita préstamo de materiales mediante app móvil → API Backend
+2. **Backend:** Procesa solicitud, valida disponibilidad, almacena en BD
+3. **Web:** Inventarista ve notificación, revisa solicitud y aprueba/rechaza
+4. **Web:** Inventarista entrega material (escanea QR, registra firma digital)
+5. **Web:** Inventarista recibe devolución (escanea QR, verifica condición, registra firma)
+
+### 🔧 STACK TECNOLÓGICO
+
+**BACKEND (`Pack-a-Stock/`):**
+- Django 5.2 + Django REST Framework
+- PostgreSQL (multi-tenant con account_id)
+- JWT Authentication (Simple JWT)
+- Docker + docker-compose
+- Variables de entorno (`.env`)
+- Almacenamiento: Media files (QR codes, imágenes)
+- Deploy: Dominio propio con Docker
+
+**FRONTEND WEB (`Front_End_SaaS/`):**
+- Next.js 14+ (App Router)
+- React 18 + TypeScript
+- Tailwind CSS + Shadcn/ui
+- TanStack Query (React Query)
+- Zustand (estado global)
+- Variables de entorno (`.env.local`)
+- Deploy: Vercel/Netlify o Docker
+
+**APP MÓVIL (FUTURA):**
+- React Native o Flutter
+- Consume misma API que frontend web
+- Funciones: solicitar préstamos, ver historial, escanear QR
+
+---
+
+## ⚙️ CONFIGURACIÓN DE VARIABLES DE ENTORNO
+
+### Backend (Pack-a-Stock/.env)
+
+```env
+# Django Core
+SECRET_KEY=tu-secret-key-super-segura-aqui
+DEBUG=False
+ALLOWED_HOSTS=tudominio.com,www.tudominio.com,localhost
+
+# Database (PostgreSQL)
+DB_NAME=packastock_db
+DB_USER=packastock_user
+DB_PASSWORD=tu-password-segura
+DB_HOST=db  # 'db' en Docker, 'localhost' en local
+DB_PORT=5432
+
+# JWT Settings
+JWT_SECRET_KEY=tu-jwt-secret-key-diferente
+JWT_ACCESS_TOKEN_LIFETIME=60  # minutos
+JWT_REFRESH_TOKEN_LIFETIME=1440  # 24 horas
+
+# CORS (para permitir frontend)
+CORS_ALLOWED_ORIGINS=https://tudominio.com,https://app.tudominio.com,http://localhost:3000
+
+# Media Files
+MEDIA_URL=/media/
+MEDIA_ROOT=/app/media
+
+# Email (para notificaciones)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu-email@gmail.com
+EMAIL_HOST_PASSWORD=tu-app-password
+
+# AWS S3 (opcional, para producción)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_STORAGE_BUCKET_NAME=
+AWS_S3_REGION_NAME=us-east-1
+
+# App Settings
+APP_NAME=Pack-a-Stock
+APP_URL=https://app.tudominio.com
+FRONTEND_URL=https://tudominio.com
+MOBILE_APP_DEEP_LINK=packastock://
+```
+
+### Frontend (Front_End_SaaS/.env.local)
+
+```env
+# API Backend
+NEXT_PUBLIC_API_URL=https://api.tudominio.com
+# En desarrollo: http://localhost:8000
+
+# App Settings
+NEXT_PUBLIC_APP_NAME=Pack-a-Stock
+NEXT_PUBLIC_APP_VERSION=1.0.0
+
+# Environment
+NODE_ENV=production  # o development
+
+# Analytics (opcional)
+NEXT_PUBLIC_GA_ID=
+NEXT_PUBLIC_SENTRY_DSN=
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_QR_SCANNER=true
+NEXT_PUBLIC_ENABLE_FACIAL_AUTH=false
+NEXT_PUBLIC_ENABLE_REPORTS=true
+```
+
+---
+
+## 🐳 CONFIGURACIÓN DOCKER
+
+### docker-compose.yml (Pack-a-Stock)
+
+**ACTUALIZACIÓN NECESARIA para variables de entorno:**
+
+```yaml
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: pack_a_stock_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - packastock_network
+    restart: unless-stopped
+
+  backend:
+    build: .
+    container_name: pack_a_stock_backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn pack_a_stock_api.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - packastock_network
+    restart: unless-stopped
+
+  # Opcional: Nginx como reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: pack_a_stock_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - packastock_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  packastock_network:
+    driver: bridge
+```
+
+### Dockerfile (Pack-a-Stock) - ACTUALIZADO
+
+```dockerfile
+FROM python:3.12-slim
+
+# Prevenir escritura de archivos .pyc
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements e instalar
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# Copiar proyecto
+COPY . .
+
+# Crear directorios para archivos estáticos y media
+RUN mkdir -p /app/staticfiles /app/media
+
+EXPOSE 8000
+
+# Script de inicio (esperar a que DB esté lista)
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "pack_a_stock_api.wsgi:application", "--bind", "0.0.0.0:8000"]
+```
+
+### entrypoint.sh (Pack-a-Stock) - NUEVO ARCHIVO
+
+```bash
+#!/bin/bash
+
+# Esperar a que PostgreSQL esté listo
+echo "Esperando a PostgreSQL..."
+while ! nc -z $DB_HOST $DB_PORT; do
+  sleep 0.1
+done
+echo "PostgreSQL iniciado"
+
+# Ejecutar migraciones
+echo "Ejecutando migraciones..."
+python manage.py migrate --noinput
+
+# Recolectar archivos estáticos
+echo "Recolectando archivos estáticos..."
+python manage.py collectstatic --noinput
+
+# Crear superusuario si no existe (opcional)
+python manage.py create_superadmin
+
+echo "Iniciando servidor..."
+exec "$@"
+```
+
+---
+
+## 🚀 DEPLOYMENT EN PRODUCCIÓN
+
+### Backend (Pack-a-Stock)
+
+**Opción 1: VPS con Docker (Recomendado)**
+
+```bash
+# En el servidor VPS
+
+# 1. Clonar repositorio
+git clone https://github.com/tu-usuario/Pack-a-Stock.git
+cd Pack-a-Stock
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+nano .env  # Editar con valores de producción
+
+# 3. Construir y levantar contenedores
+docker-compose up -d --build
+
+# 4. Verificar logs
+docker-compose logs -f
+
+# 5. Acceder al backend
+# http://tu-servidor:8000/api/
+```
+
+**Opción 2: Railway/Render/Heroku**
+- Configurar variables de entorno en el panel
+- Conectar repositorio GitHub
+- Deploy automático en cada push
+
+### Frontend (Front_End_SaaS)
+
+**Opción 1: Vercel (Recomendado para Next.js)**
+
+```bash
+# Instalar Vercel CLI
+npm i -g vercel
+
+# Desde Front_End_SaaS/
+vercel login
+vercel
+
+# Configurar variables de entorno en Vercel dashboard
+# NEXT_PUBLIC_API_URL=https://api.tudominio.com
+```
+
+**Opción 2: Docker**
+
+```dockerfile
+# Front_End_SaaS/Dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+```
+
+---
+
+## 📱 CONSIDERACIONES MÓVILES
+
+### App Móvil (React Native / Flutter)
+
+**Funcionalidades Principales:**
+1. **Autenticación**
+   - Login con email/password
+   - JWT almacenado en secure storage
+
+2. **Solicitar Préstamos**
+   - Ver catálogo de materiales disponibles
+   - Escanear QR de materiales
+   - Seleccionar fechas de préstamo
+   - Enviar solicitud → API
+
+3. **Mis Préstamos**
+   - Ver préstamos activos
+   - Ver historial
+   - Solicitar extensiones
+   - Notificaciones de aprobaciones/rechazos
+
+4. **Escaneo QR**
+   - Cámara nativa
+   - Verificar material antes de solicitar
+   - Ver detalles del material
+
+**API Endpoints Necesarios:**
+
+```
+POST   /api/auth/login/                    # Login empleado
+POST   /api/auth/refresh/                  # Refresh token
+
+GET    /api/materials/available/           # Materiales disponibles
+GET    /api/materials/{id}/                # Detalle material
+GET    /api/materials/scan/{qr_code}/      # Info por QR
+
+POST   /api/loan-requests/                 # Crear solicitud
+GET    /api/loan-requests/my-requests/     # Mis solicitudes
+GET    /api/loan-requests/{id}/            # Detalle solicitud
+
+GET    /api/loans/my-loans/                # Mis préstamos activos
+POST   /api/loan-extensions/               # Solicitar extensión
+
+GET    /api/notifications/                 # Notificaciones push
+```
+
+**Configuración Backend para Móvil:**
+
+```python
+# Pack-a-Stock/pack_a_stock_api/settings.py
+
+INSTALLED_APPS += [
+    'fcm_django',  # Firebase Cloud Messaging para push notifications
+]
+
+# CORS: Permitir app móvil
+CORS_ALLOWED_ORIGINS += [
+    'capacitor://localhost',  # Ionic/Capacitor
+    'http://localhost',       # React Native
+]
+
+# Configurar FCM
+FCM_DJANGO_SETTINGS = {
+    "FCM_SERVER_KEY": config('FCM_SERVER_KEY'),
+    "ONE_DEVICE_PER_USER": False,
+    "DELETE_INACTIVE_DEVICES": True,
+}
+```
+
+---
+
+## 🔒 SEGURIDAD
+
+### Backend
+
+```python
+# settings.py - PRODUCCIÓN
+
+# HTTPS obligatorio
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# Headers de seguridad
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
+# CORS restrictivo
+CORS_ALLOWED_ORIGINS = [
+    'https://tudominio.com',
+    'https://app.tudominio.com',
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# Rate limiting
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour'
+    }
+}
+```
+
+### Frontend
+
+```typescript
+// Front_End_SaaS/lib/api.ts
+
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Interceptor para agregar JWT
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Interceptor para refresh token
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Intentar refresh
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh/`,
+            { refresh: refreshToken }
+          )
+          localStorage.setItem('access_token', data.access)
+          return api.request(error.config)
+        } catch {
+          // Redirect a login
+          window.location.href = '/login'
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default api
+```
 
 ---
 
@@ -693,13 +1210,14 @@ Usar un set consistente como:
 
 ---
 
-## STACK TECNOLÓGICO FRONTEND
+## STACK TECNOLÓGICO FRONTEND (Front_End_SaaS/)
 
 ### Framework Base
 - **Next.js 14+** (App Router)
   - React 18+
   - TypeScript
   - Server Components + Client Components
+  - Variables de entorno (.env.local)
 
 ### UI y Estilos
 - **Tailwind CSS** (utility-first CSS)
@@ -709,7 +1227,7 @@ Usar un set consistente como:
 
 ### Gestión de Estado
 - **Zustand** (estado global ligero)
-- **TanStack Query (React Query)** (cache y sincronización de datos)
+- **TanStack Query (React Query)** (cache y sincronización de datos con backend)
 
 ### Formularios y Validación
 - **React Hook Form** (manejo de formularios)
@@ -730,10 +1248,12 @@ Usar un set consistente como:
 ### Comunicación con Backend
 - **Axios** (HTTP client)
 - **TanStack Query** (para queries y mutations)
+- Variables de entorno para API URL
 
 ### Autenticación
-- **JWT** en httpOnly cookies
+- **JWT** almacenado en localStorage/sessionStorage
 - Middleware de Next.js para proteger rutas
+- Refresh token automático
 
 ### Notificaciones
 - **react-hot-toast** o **sonner** (toast notifications)
@@ -745,30 +1265,72 @@ Usar un set consistente como:
 
 ## ESTRUCTURA DE CARPETAS RECOMENDADA
 
+### Backend (Pack-a-Stock/)
 ```
-frontend/
+Pack-a-Stock/
+├── .env                          # Variables de entorno (IGNORAR EN GIT)
+├── .env.example                  # Plantilla de variables
+├── docker-compose.yml            # Orquestación de contenedores
+├── Dockerfile                    # Imagen del backend
+├── entrypoint.sh                 # Script de inicio
+├── requirements.txt              # Dependencias Python
+├── manage.py
+├── pack_a_stock_api/
+│   ├── settings.py              # ⚠️ Usar variables de entorno
+│   ├── urls.py
+│   └── wsgi.py
+├── accounts/
+├── materials/
+├── loans/
+├── audit/
+├── labels/
+└── media/                        # Archivos subidos (QR, imágenes)
+    └── qr_codes/
+```
+
+### Frontend (Front_End_SaaS/)
+```
+Front_End_SaaS/
+├── .env.local                    # Variables de entorno (IGNORAR EN GIT)
+├── .env.example                  # Plantilla de variables
+├── next.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/
+│   │   │   └── page.tsx
 │   │   └── recuperar-password/
+│   │       └── page.tsx
 │   ├── (dashboard)/
-│   │   ├── layout.tsx (sidebar + header)
-│   │   ├── page.tsx (dashboard principal)
+│   │   ├── layout.tsx            # Sidebar + Header global
+│   │   ├── page.tsx              # Dashboard principal
 │   │   ├── materiales/
 │   │   │   ├── page.tsx
 │   │   │   ├── nuevo/
 │   │   │   ├── [id]/
-│   │   │   └── categorias/
+│   │   │   │   └── page.tsx
+│   │   │   ├── categorias/
+│   │   │   └── ubicaciones/
 │   │   ├── solicitudes/
+│   │   │   └── page.tsx
 │   │   ├── prestamos/
+│   │   │   ├── page.tsx
+│   │   │   ├── activos/
+│   │   │   └── vencidos/
 │   │   ├── extensiones/
 │   │   ├── usuarios/
 │   │   ├── reportes/
 │   │   ├── etiquetas/
 │   │   └── configuracion/
-│   └── api/ (route handlers si es necesario)
+│   └── api/                      # Route handlers si es necesario
 ├── components/
-│   ├── ui/ (shadcn components)
+│   ├── ui/                       # Shadcn components
+│   │   ├── button.tsx
+│   │   ├── modal.tsx
+│   │   ├── table.tsx
+│   │   └── ...
 │   ├── layout/
 │   │   ├── Sidebar.tsx
 │   │   ├── Header.tsx
@@ -793,17 +1355,17 @@ frontend/
 │       ├── Modal.tsx
 │       └── LoadingSpinner.tsx
 ├── lib/
-│   ├── api.ts (axios instance + endpoints)
-│   ├── auth.ts (autenticación helpers)
-│   ├── utils.ts (utilidades generales)
-│   └── constants.ts (constantes globales)
+│   ├── api.ts                    # Axios instance + config con env vars
+│   ├── auth.ts                   # Autenticación helpers
+│   ├── utils.ts                  # Utilidades generales
+│   └── constants.ts              # Constantes (usar env vars donde aplique)
 ├── hooks/
 │   ├── useAuth.ts
 │   ├── useMaterials.ts
 │   ├── useLoans.ts
 │   └── useQRScanner.ts
 ├── store/
-│   └── authStore.ts (Zustand store)
+│   └── authStore.ts              # Zustand store
 ├── types/
 │   ├── material.ts
 │   ├── loan.ts
@@ -814,66 +1376,294 @@ frontend/
     └── icons/
 ```
 
+
 ---
 
 ## SIGUIENTE PASO: INICIAR DESARROLLO
 
 ### ✅ Checklist de Preparación
 
-**Backend:**
+**Backend (Pack-a-Stock/):**
 - [x] Modelos de base de datos completos
 - [x] API REST funcionando
 - [x] Autenticación JWT implementada
 - [x] Documentación de endpoints
+- [ ] Actualizar docker-compose.yml con variables de entorno
+- [ ] Crear .env.example con todas las variables necesarias
+- [ ] Crear entrypoint.sh para Docker
+- [ ] Actualizar Dockerfile con mejores prácticas
+- [ ] Configurar CORS para frontend
+- [ ] Agregar endpoints específicos para app móvil
 
-**Frontend (por hacer):**
-- [ ] Inicializar proyecto Next.js 14
+**Frontend (Front_End_SaaS/):**
+- [ ] Inicializar proyecto Next.js 14 con TypeScript
 - [ ] Configurar Tailwind CSS + Shadcn/ui
-- [ ] Configurar TypeScript
-- [ ] Instalar dependencias necesarias
+- [ ] Instalar dependencias (React Query, Zustand, Axios, etc.)
 - [ ] Crear estructura de carpetas
-- [ ] Configurar variables de entorno
+- [ ] Configurar .env.local con NEXT_PUBLIC_API_URL
+- [ ] Crear .env.example
+- [ ] Configurar axios instance con interceptors JWT
+- [ ] Implementar middleware de autenticación
+- [ ] Crear layout base (Sidebar + Header)
+
+**Docker & Deployment:**
+- [ ] Verificar docker-compose funciona con .env
+- [ ] Crear docker-compose.prod.yml para producción
+- [ ] Configurar Nginx como reverse proxy (opcional)
+- [ ] Documentar proceso de deployment
+- [ ] Crear scripts de backup para PostgreSQL
+- [ ] Configurar certificados SSL (Let's Encrypt)
+
+**Móvil (Futuro):**
+- [ ] Definir stack (React Native vs Flutter)
+- [ ] Diseñar mockups de interfaz móvil
+- [ ] Listar endpoints API necesarios adicionales
+- [ ] Configurar Firebase Cloud Messaging para push notifications
 
 ---
 
-## ¿POR DÓNDE EMPEZAMOS?
+## 🚀 COMANDOS PARA INICIAR
 
-**Opción 1: Setup del proyecto (RECOMENDADO)**
-- Crear proyecto Next.js
-- Instalar y configurar todas las dependencias
-- Configurar Tailwind + Shadcn
-- Crear layout base (Sidebar + Header)
+### Backend (Pack-a-Stock/)
 
-**Opción 2: Prototipo visual rápido**
-- Crear wireframes/mockups en Figma
-- Validar flujos de usuario
-- Ajustar antes de programar
+```bash
+# Desarrollo local (sin Docker)
+cd Pack-a-Stock
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-**Opción 3: Implementación directa**
-- Empezar con Login + Dashboard
-- Ir construyendo componente por componente
+# Crear .env desde ejemplo
+cp .env.example .env
+# Editar .env con tus valores
 
----
+# Ejecutar migraciones
+python manage.py migrate
 
-## COMANDOS PARA INICIAR
+# Crear superusuario
+python manage.py create_superadmin
+
+# Correr servidor
+python manage.py runserver
+# API disponible en: http://localhost:8000/api/
+
+# ---
+
+# Desarrollo con Docker
+cd Pack-a-Stock
+cp .env.example .env
+# Editar .env
+
+docker-compose up --build
+# API disponible en: http://localhost:8000/api/
+# PgAdmin en: http://localhost:5050 (si lo agregas)
+
+# Ver logs
+docker-compose logs -f backend
+
+# Ejecutar comandos dentro del contenedor
+docker-compose exec backend python manage.py migrate
+docker-compose exec backend python manage.py createsuperuser
+```
+
+### Frontend (Front_End_SaaS/)
 
 ```bash
 # Crear proyecto Next.js
-npx create-next-app@latest frontend --typescript --tailwind --app
+cd Front_End_SaaS
+npx create-next-app@latest . --typescript --tailwind --app --src-dir
 
 # Instalar Shadcn/ui
 npx shadcn-ui@latest init
 
 # Instalar dependencias adicionales
-npm install zustand @tanstack/react-query axios zod react-hook-form @hookform/resolvers
+npm install zustand @tanstack/react-query @tanstack/react-query-devtools
+npm install axios zod react-hook-form @hookform/resolvers
 npm install date-fns lucide-react recharts react-hot-toast
 npm install @zxing/browser react-signature-canvas
 npm install @tanstack/react-table
 
 # Instalar tipos
 npm install -D @types/node @types/react @types/react-dom
+
+# Crear .env.local
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+
+# Copiar ejemplo
+cp .env.local .env.example
+
+# Ejecutar en desarrollo
+npm run dev
+# Aplicación en: http://localhost:3000
+
+# Build para producción
+npm run build
+npm start
+```
+
+### Producción (Todo junto con Docker)
+
+```bash
+# En el servidor VPS
+
+# 1. Backend
+cd Pack-a-Stock
+cp .env.example .env
+nano .env  # Configurar para producción
+
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# 2. Frontend (si usas Docker también)
+cd ../Front_End_SaaS
+cp .env.example .env.production
+nano .env.production  # NEXT_PUBLIC_API_URL=https://api.tudominio.com
+
+docker build -t packastock-frontend .
+docker run -d -p 3000:3000 --env-file .env.production packastock-frontend
+
+# O desplegar en Vercel
+vercel --prod
 ```
 
 ---
 
-¿Qué opción prefieres para empezar?
+## 📋 TAREAS INMEDIATAS (SPRINT 1)
+
+### Semana 1: Setup y Configuración
+
+**Backend:**
+1. Crear `.env.example` con todas las variables documentadas
+2. Actualizar `docker-compose.yml` para usar variables .env
+3. Crear `entrypoint.sh` para esperar PostgreSQL
+4. Actualizar `Dockerfile` con mejores prácticas
+5. Configurar CORS correctamente en `settings.py`
+6. Documentar endpoints en Swagger/OpenAPI
+7. Crear endpoint `GET /api/health/` para health checks
+
+**Frontend:**
+8. Inicializar proyecto Next.js en `Front_End_SaaS/`
+9. Configurar Tailwind + Shadcn/ui
+10. Crear estructura de carpetas completa
+11. Configurar `.env.local` y `.env.example`
+12. Crear `lib/api.ts` con axios y interceptors JWT
+13. Crear layout base (Sidebar + Header vacío)
+14. Implementar página de login funcional
+
+**Docker:**
+15. Verificar que todo funcione con `docker-compose up`
+16. Documentar comandos en `README.md`
+
+### Semana 2: Autenticación y Dashboard
+
+**Backend:**
+17. Verificar endpoints de autenticación funcionan correctamente
+18. Agregar rate limiting a login
+19. Implementar refresh token automático
+
+**Frontend:**
+20. Implementar autenticación completa (login, logout, refresh)
+21. Crear middleware para rutas protegidas
+22. Crear store de Zustand para auth
+23. Implementar Dashboard con métricas (consumiendo API)
+24. Crear componente MetricCard reutilizable
+25. Implementar navegación sidebar funcional
+
+### Semana 3: Gestión de Materiales (MVP)
+
+**Backend:**
+26. Verificar endpoints de materiales
+27. Optimizar queries (select_related, prefetch_related)
+28. Agregar paginación a lista de materiales
+
+**Frontend:**
+29. Crear tabla de materiales con TanStack Table
+30. Implementar búsqueda y filtros
+31. Crear modal de nuevo/editar material
+32. Implementar subida de imágenes
+33. Mostrar QR codes generados
+34. Crear página de detalle de material
+
+### Semana 4: Solicitudes y Préstamos (MVP)
+
+**Backend:**
+35. Verificar endpoints de solicitudes
+36. Agregar notificaciones por email
+37. Optimizar queries de préstamos
+
+**Frontend:**
+38. Crear tabla de solicitudes pendientes
+39. Modal de detalle de solicitud
+40. Aprobar/rechazar solicitudes
+41. Tabla de préstamos activos
+42. Implementar escaneo QR con cámara web
+43. Modal de entrega de préstamo con firma digital
+
+---
+
+## 🎯 DEFINICIÓN DE "HECHO" (Definition of Done)
+
+Para cada funcionalidad:
+
+- [ ] Código funciona correctamente
+- [ ] Variables de entorno usadas (no valores hardcodeados)
+- [ ] Responsive (desktop, tablet, móvil)
+- [ ] Manejo de errores implementado
+- [ ] Loading states visibles
+- [ ] Mensajes de éxito/error al usuario
+- [ ] No hay console.errors en navegador
+- [ ] Funciona con datos reales de la API
+- [ ] Funciona en Docker
+- [ ] Documentado en README si es necesario
+
+---
+
+## ⚠️ CONSIDERACIONES IMPORTANTES
+
+### Variables de Entorno
+- ❌ NUNCA subir `.env` a Git
+- ✅ SIEMPRE usar `.env.example` como plantilla
+- ✅ Documentar cada variable en README
+- ✅ Usar `python-decouple` o `os.getenv()` en Django
+- ✅ Usar `process.env` en Next.js (prefijo NEXT_PUBLIC_ para cliente)
+
+### Docker
+- Usar volúmenes para persistencia de datos
+- Esperar a que PostgreSQL esté listo antes de migrar
+- Usar multi-stage builds en producción
+- No exponer puertos innecesarios
+- Usar networks para comunicación entre contenedores
+
+### Seguridad
+- JWT en localStorage (frontend) con httpOnly cookies (mejor opción)
+- Refresh token automático antes de expirar
+- Rate limiting en endpoints críticos
+- CORS restrictivo en producción
+- HTTPS obligatorio en producción
+- Variables secretas nunca en el código
+
+### Móvil
+- Misma API para web y móvil
+- Versionado de API (v1, v2) para compatibilidad
+- Push notifications con FCM
+- Autenticación biométrica opcional
+- Modo offline con sincronización posterior
+
+---
+
+## 📞 PRÓXIMOS PASOS - ¿QUÉ HACEMOS AHORA?
+
+**Opción A: Setup Backend** (RECOMENDADO PRIMERO)
+- Actualizar archivos de configuración Docker
+- Crear .env.example
+- Verificar que todo funcione con docker-compose
+
+**Opción B: Setup Frontend**
+- Inicializar proyecto Next.js
+- Configurar dependencias
+- Crear estructura base
+
+**Opción C: Ambos en paralelo**
+- Yo trabajo en backend
+- Tú o alguien más en frontend
+
+¿Por cuál opción quieres empezar?

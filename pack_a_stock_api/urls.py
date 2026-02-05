@@ -14,6 +14,9 @@ from loans.routers import router as loans_router
 urlpatterns = [
     path('admin/', admin.site.urls),
     
+    # Authentication endpoints
+    path('api/auth/', include('accounts.urls')),
+    
     # API principal con routers modularizados
     path('api/accounts/', include(accounts_router.urls)),
     path('api/materials/', include(materials_router.urls)),

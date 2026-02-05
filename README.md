@@ -1,138 +1,323 @@
-# Pack-a-Stock Backend API
+# 📦 Pack-a-Stock Backend API
 
-Sistema de gestion de inventario y prestamos desarrollado con Django REST Framework.
+Sistema SaaS multi-tenant de gestión de inventarios y préstamos de materiales empresariales.
 
-## Estado del Proyecto
+![Django](https://img.shields.io/badge/Django-5.2-green)
+![DRF](https://img.shields.io/badge/DRF-3.14-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 
-**VERSION:** 1.0.0  
-**ESTADO:** Modelos completados y probados (11/11)  
-**FECHA:** 29 de Enero, 2026
+## 🎯 Descripción
 
-## Inicio Rapido
+Backend API REST para Pack-a-Stock, un sistema que permite a empresas gestionar inventarios de materiales y controlar préstamos a empleados.
 
-### Requisitos Previos
+**Características principales:**
+- 🏢 Multi-tenant (cada empresa tiene datos aislados)
+- 🔐 Autenticación JWT
+- 📦 Gestión de materiales (consumibles y no consumibles)
+- 📋 Sistema de solicitudes y préstamos
+- 🏷️ Generación de códigos QR
+- 📊 Auditoría completa
+- 🔒 Seguridad avanzada
 
-- Python 3.13+
-- PostgreSQL 14+ (produccion) o SQLite (desarrollo)
-- pip
+## 🚀 Inicio Rápido
 
-### Instalacion
+### Opción 1: Docker (Recomendado)
 
-1. Clonar el repositorio
 ```bash
-git clone <repository-url>
-cd Pack-a-Stock
+# 1. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus valores
+
+# 2. Levantar servicios
+docker compose up --build
+
+# 3. Crear superusuario (en otra terminal)
+docker compose exec backend python manage.py createsuperuser
+
+# 4. Acceder a la API
+# http://localhost:8000/api/
 ```
 
-2. Crear entorno virtual
+**Script automático (Windows):**
+```powershell
+.\setup.ps1
+```
+
+### Opción 2: Instalación Local
+
 ```bash
+# 1. Crear entorno virtual
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
-```
 
-3. Instalar dependencias
-```bash
+# 2. Instalar dependencias
 pip install -r requirements.txt
-```
 
-4. Configurar variables de entorno
-```bash
+# 3. Configurar .env
 cp .env.example .env
-# Editar .env con tus configuraciones
-```
+# Editar valores
 
-5. Ejecutar migraciones
-```bash
+# 4. Ejecutar migraciones
 python manage.py migrate
-```
 
-6. Crear superadmin
-```bash
+# 5. Crear superadmin
 python manage.py create_superadmin
-```
 
-7. Ejecutar servidor de desarrollo
-```bash
+# 6. Ejecutar servidor
 python manage.py runserver
+# http://localhost:8000/api/
 ```
 
-## Credenciales de Prueba
+## 📋 Requisitos
 
-**Superadmin:**
-- Email: admin
-- Contrasena: 12345
+- Python 3.12+
+- PostgreSQL 16+ (o SQLite para desarrollo)
+- Docker y Docker Compose (opcional)
 
-**IMPORTANTE:** Cambiar en produccion
-
-## Estructura del Proyecto
+## 🏗️ Arquitectura del Proyecto
 
 ```
-Pack-a-Stock/
-├── accounts/          # Gestion de cuentas y usuarios
-├── materials/         # Gestion de inventario
-├── loans/            # Gestion de prestamos
-├── audit/            # Registros de auditoria
-├── labels/           # Plantillas de etiquetas QR
-├── pack_a_stock_api/ # Configuracion principal
-└── BACKEND_DOCS.md   # Documentacion completa
+Pack-a-Stock/                    # BACKEND (Django + DRF)
+├── accounts/                    # Autenticación y usuarios
+├── materials/                   # Gestión de materiales
+├── loans/                       # Préstamos y solicitudes
+├── audit/                       # Auditoría
+├── labels/                      # Generación de QR
+├── pack_a_stock_api/           # Configuración Django
+├── docker-compose.yml          # Docker desarrollo
+├── docker-compose.prod.yml     # Docker producción
+├── Dockerfile                  # Imagen Docker
+├── entrypoint.sh              # Script de inicio
+└── .env.example               # Plantilla de variables
+
+Frontend (separado):
+└── Front_End_SaaS/            # Next.js + React (ver repo)
 ```
 
-## Modulos
+## 🔧 Configuración
 
-### accounts
-- Account: Empresas/organizaciones (multi-tenancy)
-- User: Usuarios del sistema (inventaristas y empleados)
+### Variables de Entorno (.env)
 
-### materials
-- Category: Categorias de materiales
-- Location: Almacenes/ubicaciones fisicas
-- Material: Equipos y materiales (consumibles y no-consumibles)
+```env
+# Django
+SECRET_KEY=tu-secret-key-aqui
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
 
-### loans
-- LoanRequest: Solicitudes de prestamo
-- LoanRequestItem: Items en solicitudes
-- Loan: Prestamos activos
-- LoanExtension: Extensiones de prestamos
+# Base de datos
+DB_NAME=packastock_db
+DB_USER=packastock_user
+DB_PASSWORD=tu-password
+DB_HOST=db  # 'db' para Docker, 'localhost' para local
+DB_PORT=5432
 
-### audit
-- AuditLog: Registro de auditoria de todas las acciones del sistema
+# JWT
+JWT_SECRET_KEY=tu-jwt-secret
+JWT_ACCESS_TOKEN_LIFETIME=60
+JWT_REFRESH_TOKEN_LIFETIME=1440
 
-### labels
-- LabelTemplate: Plantillas personalizadas para etiquetas QR
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 
-## Caracteristicas Principales
+# Ver .env.example para todas las variables
+```
 
-- Multi-tenancy (soporte para multiples empresas)
-- Diferenciacion automatica: materiales consumibles vs no-consumibles
-- Generacion automatica de codigos QR unicos
-- Sistema de prestamos con aprobaciones
-- Extensiones de prestamos
-- Autenticacion facial (preparada)
-- Firmas digitales en transacciones
-- Control de stock con alertas
-- API REST completa
+**Generar SECRET_KEY seguro:**
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
 
-## Tecnologias
+## 📊 Estado del Proyecto
 
-- Django 5.0
-- Django REST Framework 3.14.0
-- PostgreSQL / SQLite
-- JWT Authentication
-- Python 3.13
+**Versión:** 1.0.0  
+**Estado:** ✅ Backend completo - Frontend en desarrollo  
+**Última actualización:** 4 de Febrero, 2026
 
-## Documentacion
+### Completado ✅
+- [x] 11/11 Modelos de base de datos
+- [x] API REST completa (DRF)
+- [x] Autenticación JWT
+- [x] Multi-tenancy implementado
+- [x] Sistema de auditoría
+- [x] Generación de QR codes
+- [x] Docker configurado
+- [x] Variables de entorno
+- [x] Guías de deployment
 
-Consulta [BACKEND_DOCS.md](BACKEND_DOCS.md) para documentacion completa de:
-- Todos los modelos y sus campos
-- Metodos y propiedades
-- Configuracion del proyecto
-- Resultados de pruebas
-- Notas tecnicas
+### En Desarrollo 🚧
+- [ ] Frontend Web (Next.js)
+- [ ] App Móvil (React Native/Flutter)
+- [ ] Push Notifications
+- [ ] Tests automatizados
 
-## Pruebas
+## 📚 Documentación
 
-Todos los modelos han sido probados exhaustivamente:
+- **[PLAN_DESARROLLO.md](PLAN_DESARROLLO.md)** - Plan completo del sistema
+- **[BACKEND_DOCS.md](BACKEND_DOCS.md)** - Documentación técnica de la API
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Guía de deployment
+- **[SETUP_COMPLETO.md](SETUP_COMPLETO.md)** - Resumen de configuración
+- **[Documentacion/](Documentacion/)** - Documentación adicional
+
+## 🐳 Docker
+
+### Desarrollo
+
+```bash
+docker compose up --build
+# API: http://localhost:8000/api/
+# PostgreSQL: localhost:5432
+```
+
+### Producción
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+# Incluye Nginx como reverse proxy
+# SSL/HTTPS configurado
+```
+
+## 🔗 API Endpoints
+
+### Autenticación
+```
+POST   /api/auth/login/           # Login (JWT)
+POST   /api/auth/refresh/         # Refresh token
+POST   /api/auth/register/        # Registro
+```
+
+### Materiales
+```
+GET    /api/materials/            # Listar materiales
+POST   /api/materials/            # Crear material
+GET    /api/materials/{id}/       # Detalle
+PUT    /api/materials/{id}/       # Actualizar
+DELETE /api/materials/{id}/       # Eliminar
+GET    /api/materials/available/  # Disponibles
+
+GET    /api/categories/           # Categorías
+GET    /api/locations/            # Ubicaciones
+```
+
+### Préstamos
+```
+GET    /api/loan-requests/        # Solicitudes
+POST   /api/loan-requests/        # Crear solicitud
+PUT    /api/loan-requests/{id}/   # Aprobar/Rechazar
+
+GET    /api/loans/                # Préstamos activos
+POST   /api/loans/                # Registrar entrega
+PUT    /api/loans/{id}/return/    # Registrar devolución
+
+POST   /api/loan-extensions/      # Solicitar extensión
+```
+
+Ver [BACKEND_DOCS.md](BACKEND_DOCS.md) para endpoints completos.
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests
+python manage.py test
+
+# Con coverage
+coverage run --source='.' manage.py test
+coverage report
+```
+
+**Estado de tests:**
+- ✅ Modelos: 11/11 validados
+- ⏳ API Endpoints: En desarrollo
+- ⏳ Integración: Pendiente
+
+## 🔒 Seguridad
+
+- JWT Authentication con refresh tokens
+- CORS configurado
+- Rate limiting implementado
+- HTTPS/SSL en producción
+- Headers de seguridad (HSTS, XSS Protection)
+- Multi-tenancy con aislamiento de datos
+- Auditoría completa de acciones
+
+## 🚀 Deployment
+
+### VPS/Servidor Propio
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/tu-usuario/Pack-a-Stock.git
+cd Pack-a-Stock
+
+# 2. Configurar .env
+cp .env.example .env
+nano .env  # Editar valores de producción
+
+# 3. Levantar con Docker
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 4. SSL con Let's Encrypt
+sudo certbot --nginx -d api.tudominio.com
+```
+
+Ver [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) para guía completa.
+
+### Servicios Cloud
+
+- **Railway/Render:** Conectar repositorio GitHub
+- **Heroku:** Usar Procfile incluido
+- **AWS/DigitalOcean:** Docker Compose
+
+## 🛠️ Comandos Útiles
+
+```bash
+# Docker
+docker compose logs -f backend        # Ver logs
+docker compose exec backend bash      # Entrar al contenedor
+docker compose restart backend        # Reiniciar
+docker compose down -v                # Detener y limpiar
+
+# Django
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py collectstatic
+
+# Base de datos (backup)
+docker compose exec db pg_dump -U packastock_user packastock_db > backup.sql
+
+# Restaurar
+docker compose exec -T db psql -U packastock_user packastock_db < backup.sql
+```
+
+## 📱 Integración Móvil
+
+El backend está preparado para servir tanto al frontend web como a la app móvil:
+
+- Mismos endpoints JWT
+- CORS configurado para móvil
+- Push notifications ready (FCM)
+- Endpoints optimizados para móvil
+
+## 🤝 Contribuir
+
+Este es un proyecto privado. Contacta al administrador para contribuir.
+
+## 📝 Licencia
+
+Privado - Pack-a-Stock © 2026
+
+## 📞 Soporte
+
+Para problemas o dudas:
+1. Revisar documentación
+2. Verificar logs: `docker compose logs backend`
+3. Consultar [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+
+---
+
+**Desarrollado con ❤️ para gestión eficiente de inventarios**
+
 
 - 11 modelos probados (100%)
 - 11 metodos probados (100%)

@@ -3,32 +3,70 @@ version: "3.9"
 services:
   db:
     image: postgres:16
-    container_name: postgres_db
+    container_name: pack_a_stock_db
     environment:
-      POSTGRES_DB: packastock_db
-      POSTGRES_USER: packastock_user
-      POSTGRES_PASSWORD: packastock123
+      POSTGRES_DB: ${DB_NAME:-packastock_db}
+      POSTGRES_USER: ${DB_USER:-packastock_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-packastock123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - packastock_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U packastock_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  web:
-    build: .
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: pack_a_stock_web
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - packastock_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../Front_End_SaaS
+      dockerfile: Dockerfile
+    container_name: pack_a_stock_frontend
     environment:
-      DB_NAME: packastock_db
-      DB_USER: packastock_user
-      DB_PASSWORD: packastock123
-      DB_HOST: db
-      DB_PORT: 5432
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NEXT_PUBLIC_APP_NAME=Pack-a-Stock
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../Front_End_SaaS:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - packastock_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  packastock_network:
+    driver: bridge
+

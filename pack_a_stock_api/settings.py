@@ -47,9 +47,10 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
-    # 'storages',  # Descomentar cuando se configure AWS S3
+    'storages',  # Para S3/DigitalOcean Spaces
     
     # Local apps
     'accounts',
@@ -147,11 +148,18 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # WhiteNoise configuración para servir archivos estáticos en producción
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# AWS S3 Configuration para archivos media (QR codes, imágenes, etc.)
+# AWS S3 / DigitalOcean Spaces Configuration
+# Para DigitalOcean Spaces, usa:
+# AWS_S3_ENDPOINT_URL = https://<region>.digitaloceanspaces.com
+# AWS_S3_REGION_NAME = <region> (ej: nyc3, sfo3, ams3)
+# AWS_STORAGE_BUCKET_NAME = tu-bucket-name
+
+USE_S3 = config('USE_S3', default=False, cast=bool)
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='pack-a-stock-media')
 AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default='')  # Para DigitalOcean Spaces
 AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default='')
 AWS_DEFAULT_ACL = config('AWS_DEFAULT_ACL', default='public-read')
 AWS_S3_OBJECT_PARAMETERS = {
@@ -160,13 +168,19 @@ AWS_S3_OBJECT_PARAMETERS = {
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
 
-# Si hay credenciales de AWS, usar S3 para media. Si no, usar local (desarrollo)
-if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-    # Usar S3 para archivos media
+# Si USE_S3 está activo O hay credenciales AWS configuradas, usar S3/Spaces
+if USE_S3 or (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY):
+    # Usar S3/Spaces para archivos media
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    
+    # Configurar URL de media según el servicio
     if AWS_S3_CUSTOM_DOMAIN:
         MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    elif AWS_S3_ENDPOINT_URL:
+        # DigitalOcean Spaces
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/'
     else:
+        # AWS S3
         MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
 else:
     # Usar almacenamiento local para desarrollo
