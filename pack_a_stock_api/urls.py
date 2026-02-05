@@ -11,8 +11,16 @@ from accounts.routers import router as accounts_router
 from materials.routers import router as materials_router
 from loans.routers import router as loans_router
 
+# Importar views de autenticación
+from accounts.Viewsets.auth_viewsets import login, refresh_token, logout
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # Autenticación JWT (sin requerir credenciales)
+    path('api/auth/login/', login, name='login'),
+    path('api/auth/refresh/', refresh_token, name='refresh_token'),
+    path('api/auth/logout/', logout, name='logout'),
     
     # API principal con routers modularizados
     path('api/accounts/', include(accounts_router.urls)),
