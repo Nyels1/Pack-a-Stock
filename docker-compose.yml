@@ -44,7 +44,7 @@ services:
 
   frontend:
     build:
-      context: ../Front_End_SaaS
+      context: ../Pack-a-Stock_React
       dockerfile: Dockerfile
     container_name: pack_a_stock_frontend
     environment:
@@ -53,7 +53,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ../Front_End_SaaS:/app
+      - ../Pack-a-Stock_React:/app
       - /app/node_modules
     depends_on:
       - backend

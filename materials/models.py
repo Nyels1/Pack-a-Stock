@@ -137,8 +137,14 @@ class Material(models.Model):
         help_text="Cantidad sugerida para reordenar cuando stock esté bajo"
     )
     
-    # Imagen (S3)
-    image_url = models.URLField(blank=True, null=True)
+    # Imagen del material (S3/R2)
+    image = models.ImageField(
+        upload_to='materials/',
+        blank=True,
+        null=True,
+        help_text="Imagen del material"
+    )
+    image_url = models.URLField(blank=True, null=True)  # Deprecated - usar 'image'
     
     # Estado y configuración
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='available')
