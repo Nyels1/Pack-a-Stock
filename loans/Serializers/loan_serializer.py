@@ -40,6 +40,27 @@ class LoanCreateSerializer(serializers.ModelSerializer):
             'expected_return_date', 'pickup_signature', 'condition_on_pickup'
         ]
 
+    def validate_borrower(self, value):
+        """Verificar si el usuario está bloqueado"""
+        from django.utils import timezone
+
+        if value.is_blocked:
+            if value.blocked_until and value.blocked_until < timezone.now():
+                # Desbloquear automáticamente si ya pasó la fecha
+                value.is_blocked = False
+                value.blocked_reason = None
+                value.blocked_until = None
+                value.save()
+            else:
+                blocked_msg = f"Usuario bloqueado"
+                if value.blocked_until:
+                    blocked_msg += f" hasta {value.blocked_until.strftime('%d/%m/%Y')}"
+                if value.blocked_reason:
+                    blocked_msg += f". Motivo: {value.blocked_reason}"
+                raise serializers.ValidationError(blocked_msg)
+
+        return value
+
 
 class LoanReturnSerializer(serializers.Serializer):
     condition_on_return = serializers.ChoiceField(

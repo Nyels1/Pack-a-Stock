@@ -113,6 +113,7 @@ class Material(models.Model):
     description = models.TextField(blank=True, null=True)
     sku = models.CharField(max_length=100, unique=True, blank=True)
     barcode = models.CharField(max_length=100, blank=True, null=True)
+    serial_number = models.CharField(max_length=255, blank=True, null=True, help_text="Número de serie para materiales no consumibles")
     
     # Código QR único generado automáticamente
     # Para consumibles: QR por lote

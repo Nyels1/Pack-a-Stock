@@ -65,6 +65,40 @@ class MaterialViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
+    @action(detail=True, methods=['post'])
+    def add_stock(self, request, pk=None):
+        """Agregar stock a un material consumible"""
+        material = self.get_object()
+        quantity = request.data.get('quantity', 0)
+
+        if not material.is_consumable:
+            return Response(
+                {'error': 'Solo se puede agregar stock a materiales consumibles'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(quantity, int) or quantity <= 0:
+            return Response(
+                {'error': 'La cantidad debe ser un número entero mayor a 0'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        material.quantity += quantity
+        material.available_quantity += quantity
+
+        if material.status in ('retired',) and material.available_quantity > 0:
+            material.status = 'available'
+            material.is_available_for_loan = True
+
+        material.save()
+
+        return Response({
+            'status': 'success',
+            'message': f'{quantity} unidades agregadas al stock',
+            'quantity': material.quantity,
+            'available_quantity': material.available_quantity
+        })
+
     @action(detail=True, methods=['get'])
     def qr_code(self, request, pk=None):
         """Obtener información del código QR del material"""

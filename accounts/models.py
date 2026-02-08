@@ -20,7 +20,8 @@ class Account(models.Model):
     country = models.CharField(max_length=255, default='México')
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(unique=True)
-    
+    logo = models.ImageField(upload_to='account_logos/', blank=True, null=True, help_text="Logo de la empresa para etiquetas")
+
     subscription_plan = models.CharField(max_length=50, choices=PLAN_CHOICES, default='freemium')
     max_locations = models.IntegerField(default=1)
     max_users = models.IntegerField(default=5)

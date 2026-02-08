@@ -16,7 +16,7 @@ class MaterialSerializer(serializers.ModelSerializer):
         model = Material
         fields = [
             'id', 'account', 'category', 'category_detail', 'location', 'location_detail',
-            'name', 'description', 'sku', 'barcode', 'qr_code', 'qr_image',
+            'name', 'description', 'sku', 'barcode', 'serial_number', 'qr_code', 'qr_image',
             'quantity', 'available_quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image', 'image_url', 'status', 'is_available_for_loan',
             'requires_facial_auth', 'is_active', 'is_consumable', 'is_low_stock',
@@ -36,7 +36,7 @@ class MaterialCreateSerializer(serializers.ModelSerializer):
         model = Material
         fields = [
             'category', 'location', 'name', 'description', 'sku',
-            'barcode', 'quantity', 'unit_of_measure', 'min_stock_level',
+            'barcode', 'serial_number', 'quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image', 'image_url', 'status', 'is_available_for_loan',
             'requires_facial_auth', 'is_active'
         ]
@@ -53,7 +53,7 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
         fields = [
-            'id', 'name', 'sku', 'qr_code', 'qr_image', 'image',
+            'id', 'name', 'sku', 'serial_number', 'qr_code', 'qr_image', 'image',
             'category', 'category_name', 'location', 'location_name',
             'quantity', 'available_quantity', 'status', 'is_available_for_loan', 'is_low_stock',
             'unit_of_measure', 'min_stock_level', 'description'
