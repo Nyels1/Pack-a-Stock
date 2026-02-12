@@ -274,17 +274,17 @@ CORS_ALLOW_HEADERS = [
 
 # Security Settings para producción
 if not DEBUG:
-    # HTTPS/SSL - Comentado hasta configurar certificado SSL en Nginx
-    # SECURE_SSL_REDIRECT = True
-    # SESSION_COOKIE_SECURE = True
-    # CSRF_COOKIE_SECURE = True
+    # HTTPS/SSL - Deshabilitado hasta configurar certificado SSL en Nginx
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    # HSTS - Comentado hasta configurar SSL
-    # SECURE_HSTS_SECONDS = 31536000  # 1 año
-    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    # SECURE_HSTS_PRELOAD = True
+    # HSTS - Deshabilitado hasta configurar SSL
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
     
     # Proxy headers (para IONOS/nginx)
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
