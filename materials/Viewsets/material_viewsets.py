@@ -2,18 +2,20 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db import models
 from materials.models import Material
 from materials.Serializers.material_serializer import (
     MaterialSerializer,
     MaterialCreateSerializer,
     MaterialMinimalSerializer
 )
+from pack_a_stock_api.permissions import IsSameAccountOrReadOnly
 
 
 class MaterialViewSet(viewsets.ModelViewSet):
     queryset = Material.objects.all()
     serializer_class = MaterialSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSameAccountOrReadOnly]
     filterset_fields = ['category', 'location', 'status', 'is_available_for_loan', 'is_active']
     search_fields = ['name', 'description', 'sku', 'barcode', 'qr_code']
     ordering_fields = ['name', 'sku', 'quantity', 'available_quantity', 'created_at']

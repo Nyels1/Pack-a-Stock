@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from accounts.models import User
@@ -11,12 +12,21 @@ from accounts.Serializers.user_serializer import (
     RegisterSerializer, 
     LoginSerializer
 )
+from pack_a_stock_api.permissions import CanManageUsers
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class LoginThrottle(AnonRateThrottle):
+    rate = '10/hour'
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageUsers]
+    throttle_classes = [UserRateThrottle]
     
     def get_queryset(self):
         user = self.request.user
@@ -33,12 +43,15 @@ class UserViewSet(viewsets.ModelViewSet):
         account = self.request.user.account
         serializer.save(account=account)
     
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[LoginThrottle])
     def register(self, request):
         """Registro de nueva cuenta y usuario administrador"""
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Log de registro exitoso
+        logger.info(f'Nuevo usuario registrado: {user.email} - Account: {user.account.company_name}')
         
         # Generar tokens JWT
         refresh = RefreshToken.for_user(user)

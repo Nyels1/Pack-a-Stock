@@ -9,12 +9,16 @@ from loans.Serializers.loan_serializer import (
     LoanCreateSerializer,
     LoanReturnSerializer
 )
+from pack_a_stock_api.permissions import IsOwnerOrAdmin
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class LoanViewSet(viewsets.ModelViewSet):
     queryset = Loan.objects.all()
     serializer_class = LoanSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
     filterset_fields = ['status', 'borrower', 'material', 'is_consumable_loan']
     search_fields = ['borrower__full_name', 'material__name']
     ordering_fields = ['issued_at', 'expected_return_date', 'status']
