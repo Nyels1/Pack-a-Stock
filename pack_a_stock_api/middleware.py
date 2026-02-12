@@ -28,8 +28,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         # Permissions Policy (antes Feature Policy)
         response['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
         
-        # Content Security Policy
-        if not request.path.startswith('/admin/'):
+        # Content Security Policy - Excluir /admin/ y /api/docs/ (usan CDNs externos)
+        if not request.path.startswith('/admin/') and not request.path.startswith('/api/docs/') and not request.path.startswith('/api/redoc/') and not request.path.startswith('/api/schema/'):
             response['Content-Security-Policy'] = (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline'; "
