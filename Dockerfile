@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     libpq-dev \
     netcat-openbsd \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalar dependencias Python
@@ -28,7 +29,7 @@ RUN mkdir -p /app/staticfiles /app/media
 
 # Copiar y dar permisos al script de entrada
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Exponer puerto
 EXPOSE 8000
