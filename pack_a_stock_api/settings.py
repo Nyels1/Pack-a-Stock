@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',  # API Documentation (Swagger/OpenAPI)
     # 'storages',  # Descomentar cuando se configure AWS S3
     
     # Local apps
@@ -194,6 +195,17 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular Settings (API Documentation)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Pack-a-Stock API',
+    'DESCRIPTION': 'Sistema de gestión de inventario y préstamos de materiales',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/',
 }
 
 # JWT Settings
