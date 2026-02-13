@@ -6,7 +6,9 @@ from django.utils import timezone
 class Account(models.Model):
     PLAN_CHOICES = [
         ('freemium', 'Freemium'),
-        ('premium', 'Premium'),
+        ('monthly', 'Plan Mensual'),
+        ('quarterly', 'Plan Trimestral'),
+        ('annual', 'Plan Anual'),
     ]
     
     company_name = models.CharField(max_length=255)
@@ -126,4 +128,55 @@ class User(AbstractBaseUser):
     def has_module_perms(self, app_label):
         """Superusers tienen permisos en todos los módulos"""
         return self.is_superuser
+
+
+class SubscriptionPlan(models.Model):
+    PLAN_NAME_CHOICES = [
+        ('monthly', 'Plan Mensual'),
+        ('quarterly', 'Plan Trimestral'),
+        ('annual', 'Plan Anual'),
+    ]
+
+    name = models.CharField(max_length=50, choices=PLAN_NAME_CHOICES, unique=True)
+    display_name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_days = models.IntegerField()
+    max_users = models.IntegerField(default=-1)
+    max_locations = models.IntegerField(default=-1)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'subscription_plans'
+
+    def __str__(self):
+        return f"{self.display_name} - ${self.price}"
+
+
+class Payment(models.Model):
+    STATUS_CHOICES = [
+        ('completed', 'Completado'),
+        ('failed', 'Fallido'),
+        ('refunded', 'Reembolsado'),
+    ]
+
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='payments')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    card_last_four = models.CharField(max_length=4)
+    card_holder_name = models.CharField(max_length=255)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
+    paid_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'payments'
+        ordering = ['-paid_at']
+        indexes = [
+            models.Index(fields=['account']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.account.company_name} - {self.plan.display_name} - ${self.amount}"
 

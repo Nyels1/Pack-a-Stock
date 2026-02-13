@@ -8,6 +8,8 @@ from materials.Serializers.material_serializer import (
     MaterialCreateSerializer,
     MaterialMinimalSerializer
 )
+from loans.models import Loan
+from accounts.Serializers.user_serializer import UserSerializer
 
 
 class MaterialViewSet(viewsets.ModelViewSet):
@@ -122,6 +124,60 @@ class MaterialViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Material.DoesNotExist:
             return Response({'error': 'Material no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """Get loan history for a specific material"""
+        material = self.get_object()
+        loans = Loan.objects.filter(
+            material=material
+        ).select_related('borrower', 'issued_by').order_by('-issued_at')
+
+        history_data = []
+        for loan in loans:
+            duration_days = None
+            if loan.actual_return_date and loan.issued_at:
+                duration_days = (loan.actual_return_date - loan.issued_at.date()).days
+            elif loan.status == 'active' and loan.issued_at:
+                from django.utils import timezone
+                duration_days = (timezone.now().date() - loan.issued_at.date()).days
+
+            history_data.append({
+                'id': loan.id,
+                'borrower': {
+                    'id': loan.borrower.id,
+                    'full_name': loan.borrower.full_name,
+                    'email': loan.borrower.email,
+                },
+                'quantity_loaned': loan.quantity_loaned,
+                'issued_at': loan.issued_at,
+                'expected_return_date': loan.expected_return_date,
+                'actual_return_date': loan.actual_return_date,
+                'status': loan.status,
+                'condition_on_pickup': loan.condition_on_pickup,
+                'condition_on_return': loan.condition_on_return,
+                'duration_days': duration_days,
+            })
+
+        # Stats
+        total_loans = loans.count()
+        active_loans = loans.filter(status='active').count()
+        from django.db.models import Count
+        top_borrower = loans.values('borrower__full_name').annotate(
+            count=Count('id')
+        ).order_by('-count').first()
+
+        return Response({
+            'success': True,
+            'data': {
+                'material_name': material.name,
+                'material_sku': material.sku,
+                'total_loans': total_loans,
+                'active_loans': active_loans,
+                'top_borrower': top_borrower['borrower__full_name'] if top_borrower else None,
+                'history': history_data,
+            }
+        })
 
 
 from django.db import models

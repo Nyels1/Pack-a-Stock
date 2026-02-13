@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Account, User
+from .models import Account, User, SubscriptionPlan, Payment
 
 
 @admin.register(Account)
@@ -26,4 +26,17 @@ class UserAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at', 'last_login')
     
     ordering = ('-created_at',)
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = ['display_name', 'name', 'price', 'duration_days', 'is_active']
+    list_filter = ['is_active']
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['account', 'plan', 'amount', 'card_last_four', 'status', 'paid_at']
+    list_filter = ['status', 'plan']
+    search_fields = ['account__company_name', 'card_holder_name']
 

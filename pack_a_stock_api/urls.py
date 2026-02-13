@@ -16,7 +16,10 @@ urlpatterns = [
     
     # Authentication endpoints
     path('api/auth/', include('accounts.urls')),
-    
+
+    # Admin panel endpoints (superusers only)
+    path('api/admin/', include('accounts.admin_urls')),
+
     # API principal con routers modularizados
     path('api/accounts/', include(accounts_router.urls)),
     path('api/materials/', include(materials_router.urls)),
