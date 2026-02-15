@@ -21,7 +21,7 @@ class LoanRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanRequest
         fields = [
-            'id', 'account', 'requester', 'requester_detail', 'requested_date',
+            'id', 'account', 'qr_token', 'requester', 'requester_detail', 'requested_date',
             'desired_pickup_date', 'desired_return_date', 'purpose', 'status',
             'reviewed_by', 'reviewed_by_detail', 'reviewed_at', 'review_notes',
             'items', 'created_at', 'updated_at'

@@ -91,3 +91,19 @@ class LoanViewSet(viewsets.ModelViewSet):
             'status': 'success',
             'message': 'Autenticación facial verificada'
         })
+
+    @action(detail=False, methods=['get'], url_path='by-qr/(?P<qr_token>[^/.]+)')
+    def by_qr(self, request, qr_token=None):
+        """Buscar préstamo por QR token"""
+        try:
+            loan = self.get_queryset().get(qr_token=qr_token)
+            serializer = self.get_serializer(loan)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+        except Loan.DoesNotExist:
+            return Response(
+                {'error': 'Préstamo no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )

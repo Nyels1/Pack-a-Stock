@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
@@ -8,7 +9,7 @@ from materials.models import Material
 
 class LoanRequest(models.Model):
     """Solicitudes de préstamo de materiales"""
-    
+
     STATUS_CHOICES = [
         ('pending', 'Pendiente'),
         ('approved', 'Aprobada'),
@@ -16,16 +17,19 @@ class LoanRequest(models.Model):
         ('cancelled', 'Cancelada'),
         ('completed', 'Completada'),
     ]
-    
+
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='loan_requests')
     requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='loan_requests')
-    
+
+    # Token QR único para escaneo
+    qr_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
     # Fechas y motivo
     requested_date = models.DateTimeField(auto_now_add=True)
     desired_pickup_date = models.DateField()
     desired_return_date = models.DateField()
     purpose = models.TextField(blank=True, null=True, help_text="Propósito del préstamo")
-    
+
     # Estado y revisión
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
     reviewed_by = models.ForeignKey(
@@ -129,11 +133,12 @@ class Loan(models.Model):
     ]
     
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='loans')
+    qr_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     loan_request = models.ForeignKey(
-        LoanRequest, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        LoanRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='loans'
     )
     

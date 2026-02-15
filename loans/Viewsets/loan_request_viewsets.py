@@ -38,15 +38,18 @@ class LoanRequestViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Aprobar solicitud de préstamo"""
+        """Aprobar solicitud de préstamo - devuelve qr_token para Flutter"""
         loan_request = self.get_object()
         notes = request.data.get('notes', '')
-        
+
         try:
             loan_request.approve(request.user, notes)
+            serializer = self.get_serializer(loan_request)
             return Response({
                 'status': 'success',
-                'message': 'Solicitud aprobada'
+                'message': 'Solicitud aprobada',
+                'qr_token': str(loan_request.qr_token),
+                'data': serializer.data
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -79,3 +82,19 @@ class LoanRequestViewSet(viewsets.ModelViewSet):
         my_requests = self.get_queryset().filter(requester=request.user)
         serializer = self.get_serializer(my_requests, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='by-qr/(?P<qr_token>[^/.]+)')
+    def by_qr(self, request, qr_token=None):
+        """Buscar solicitud por QR token"""
+        try:
+            loan_request = self.get_queryset().get(qr_token=qr_token)
+            serializer = self.get_serializer(loan_request)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+        except LoanRequest.DoesNotExist:
+            return Response(
+                {'error': 'Solicitud no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )

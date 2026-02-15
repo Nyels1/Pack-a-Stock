@@ -16,7 +16,7 @@ class LoanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Loan
         fields = [
-            'id', 'account', 'loan_request', 'borrower', 'borrower_detail',
+            'id', 'account', 'qr_token', 'loan_request', 'borrower', 'borrower_detail',
             'issued_by', 'issued_by_detail', 'returned_to', 'returned_to_detail',
             'material', 'material_detail', 'quantity_loaned', 'quantity_returned',
             'is_consumable_loan', 'issued_at', 'expected_return_date',
@@ -60,6 +60,36 @@ class LoanCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(blocked_msg)
 
         return value
+
+    def validate_expected_return_date(self, value):
+        """La fecha de devolución no puede ser anterior a hoy"""
+        from django.utils import timezone
+        if value and value < timezone.now().date():
+            raise serializers.ValidationError(
+                "La fecha de devolución no puede ser anterior a hoy"
+            )
+        return value
+
+    def validate(self, attrs):
+        """Validar disponibilidad del material"""
+        material = attrs.get('material')
+        quantity = attrs.get('quantity_loaned', 1)
+
+        if material:
+            if material.available_quantity < quantity:
+                raise serializers.ValidationError({
+                    'quantity_loaned': (
+                        f"Stock insuficiente para '{material.name}'. "
+                        f"Disponible: {material.available_quantity}, Solicitado: {quantity}"
+                    )
+                })
+
+            if material.available_quantity <= 0:
+                raise serializers.ValidationError({
+                    'material': f"'{material.name}' no tiene unidades disponibles para préstamo"
+                })
+
+        return attrs
 
 
 class LoanReturnSerializer(serializers.Serializer):
