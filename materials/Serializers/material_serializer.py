@@ -7,6 +7,7 @@ from materials.Serializers.location_serializer import LocationSerializer
 class MaterialSerializer(serializers.ModelSerializer):
     category_detail = CategorySerializer(source='category', read_only=True)
     location_detail = LocationSerializer(source='location', read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
     is_consumable = serializers.ReadOnlyField()
     is_low_stock = serializers.ReadOnlyField()
     can_be_loaned = serializers.ReadOnlyField()
@@ -38,7 +39,7 @@ class MaterialCreateSerializer(serializers.ModelSerializer):
             'category', 'location', 'name', 'description', 'sku',
             'barcode', 'serial_number', 'quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image', 'image_url', 'status', 'is_available_for_loan',
-            'requires_facial_auth', 'is_active'
+            'requires_facial_auth'
         ]
         read_only_fields = []
 

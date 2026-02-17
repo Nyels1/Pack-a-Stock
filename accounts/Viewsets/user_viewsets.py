@@ -98,3 +98,16 @@ class UserViewSet(viewsets.ModelViewSet):
         """Obtener información del usuario actual"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def check_delete(self, request, pk=None):
+        from loans.models import Loan, LoanRequest
+        user = self.get_object()
+        active_loans = Loan.objects.filter(borrower=user, status__in=['active', 'approved'])
+        pending_requests = LoanRequest.objects.filter(requested_by=user, status='pending')
+        return Response({
+            'can_delete': True,
+            'active_loans_count': active_loans.count(),
+            'pending_requests_count': pending_requests.count(),
+            'loan_material_names': list(active_loans.values_list('material__name', flat=True)[:10]),
+        })

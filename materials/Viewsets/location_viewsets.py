@@ -1,7 +1,9 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from materials.models import Location
+from materials.models import Location, Material
 from materials.Serializers.location_serializer import LocationSerializer
 
 
@@ -33,3 +35,13 @@ class LocationViewSet(viewsets.ModelViewSet):
             })
 
         serializer.save(account=account)
+
+    @action(detail=True, methods=['get'])
+    def check_delete(self, request, pk=None):
+        location = self.get_object()
+        materials = Material.objects.filter(location=location)
+        return Response({
+            'can_delete': True,
+            'materials_count': materials.count(),
+            'material_names': list(materials.values_list('name', flat=True)[:10]),
+        })
