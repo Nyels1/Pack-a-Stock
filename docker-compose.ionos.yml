@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: pas_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pas_postgres_data:/var/lib/postgresql/data
+    networks:
+      - pas_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./Pack-a-Stock
+      dockerfile: Dockerfile.prod
+    container_name: pas_backend
+    volumes:
+      - pas_static:/app/staticfiles
+      - pas_media:/app/media
+      - pas_logs:/app/logs
+    ports:
+      - "127.0.0.1:8001:8000"
+    env_file:
+      - .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - pas_network
+    restart: always
+
+  frontend:
+    build:
+      context: ./Pack-a-Stock_React
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: https://packstock.198.71.54.179.nip.io/api
+    container_name: pas_frontend
+    ports:
+      - "127.0.0.1:3003:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://packstock.198.71.54.179.nip.io/api
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - pas_network
+    restart: always
+
+volumes:
+  pas_postgres_data:
+  pas_static:
+  pas_media:
+  pas_logs:
+
+networks:
+  pas_network:
+    driver: bridge
