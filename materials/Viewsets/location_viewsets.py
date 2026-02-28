@@ -36,6 +36,29 @@ class LocationViewSet(viewsets.ModelViewSet):
 
         serializer.save(account=account)
 
+    def perform_destroy(self, instance):
+        from audit.models import AuditLog
+        from materials.models import Material
+        materials_count = Material.objects.filter(location=instance).count()
+        AuditLog.log_action(
+            action='delete',
+            user=self.request.user,
+            account=instance.account,
+            table_name='location',
+            record_id=instance.id,
+            changes={
+                'snapshot': {
+                    'name': instance.name,
+                    'description': instance.description,
+                    'full_address': instance.full_address,
+                    'materials_count': materials_count,
+                }
+            },
+            ip_address=self.request.META.get('REMOTE_ADDR'),
+            description=f'Ubicación "{instance.name}" eliminada',
+        )
+        instance.delete()
+
     @action(detail=True, methods=['get'])
     def check_delete(self, request, pk=None):
         location = self.get_object()

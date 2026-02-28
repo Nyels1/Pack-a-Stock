@@ -21,8 +21,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
-            return User.objects.all()
-        return User.objects.filter(account=user.account)
+            return User.objects.all().order_by('id')
+        return User.objects.filter(account=user.account).order_by('id')
     
     def get_serializer_class(self):
         if self.action == 'create':

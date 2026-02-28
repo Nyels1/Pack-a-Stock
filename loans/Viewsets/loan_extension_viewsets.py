@@ -64,3 +64,13 @@ class LoanExtensionViewSet(viewsets.ModelViewSet):
         pending = self.get_queryset().filter(status='pending')
         serializer = self.get_serializer(pending, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def my_extensions(self, request):
+        """Extensiones de los préstamos del usuario actual"""
+        extensions = LoanExtension.objects.filter(
+            loan__account=request.user.account,
+            loan__borrower=request.user,
+        ).select_related('loan__material')
+        serializer = self.get_serializer(extensions, many=True)
+        return Response(serializer.data)

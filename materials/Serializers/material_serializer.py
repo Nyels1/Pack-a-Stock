@@ -57,5 +57,5 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
             'id', 'name', 'sku', 'serial_number', 'qr_code', 'qr_image', 'image',
             'category', 'category_name', 'location', 'location_name',
             'quantity', 'available_quantity', 'status', 'is_available_for_loan', 'is_low_stock',
-            'unit_of_measure', 'min_stock_level', 'description'
+            'unit_of_measure', 'min_stock_level', 'description', 'is_consumable'
         ]

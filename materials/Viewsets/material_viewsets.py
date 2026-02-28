@@ -34,6 +34,46 @@ class MaterialViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         account = self.request.user.account
         serializer.save(account=account)
+
+    def perform_destroy(self, instance):
+        from audit.models import AuditLog
+        from loans.models import Loan
+        # Snapshot loan history before CASCADE deletes them
+        loans_qs = Loan.objects.filter(material=instance).select_related('borrower').order_by('-issued_at')
+        loan_history = [
+            {
+                'id': loan.id,
+                'borrower': loan.borrower.full_name if loan.borrower else 'N/A',
+                'quantity': loan.quantity_loaned,
+                'issued_at': str(loan.issued_at)[:10] if loan.issued_at else None,
+                'returned_at': str(loan.actual_return_date) if loan.actual_return_date else None,
+                'status': loan.status,
+            }
+            for loan in loans_qs[:50]
+        ]
+        AuditLog.log_action(
+            action='delete',
+            user=self.request.user,
+            account=instance.account,
+            table_name='material',
+            record_id=instance.id,
+            changes={
+                'snapshot': {
+                    'name': instance.name,
+                    'sku': instance.sku,
+                    'category': instance.category.name if instance.category else None,
+                    'quantity': instance.quantity,
+                    'available_quantity': instance.available_quantity,
+                    'status': instance.status,
+                    'location': instance.location.name if instance.location else None,
+                    'total_loans': loans_qs.count(),
+                    'loan_history': loan_history,
+                }
+            },
+            ip_address=self.request.META.get('REMOTE_ADDR'),
+            description=f'Material "{instance.name}" (SKU: {instance.sku}) eliminado',
+        )
+        instance.delete()
     
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
@@ -137,7 +177,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
         for loan in loans:
             duration_days = None
             if loan.actual_return_date and loan.issued_at:
-                duration_days = (loan.actual_return_date - loan.issued_at.date()).days
+                duration_days = (loan.actual_return_date.date() - loan.issued_at.date()).days
             elif loan.status == 'active' and loan.issued_at:
                 from django.utils import timezone
                 duration_days = (timezone.now().date() - loan.issued_at.date()).days

@@ -22,6 +22,28 @@ class CategoryViewSet(viewsets.ModelViewSet):
         account = self.request.user.account
         serializer.save(account=account)
 
+    def perform_destroy(self, instance):
+        from audit.models import AuditLog
+        materials_count = Material.objects.filter(category=instance).count()
+        AuditLog.log_action(
+            action='delete',
+            user=self.request.user,
+            account=instance.account,
+            table_name='category',
+            record_id=instance.id,
+            changes={
+                'snapshot': {
+                    'name': instance.name,
+                    'description': instance.description,
+                    'is_consumable': instance.is_consumable,
+                    'materials_count': materials_count,
+                }
+            },
+            ip_address=self.request.META.get('REMOTE_ADDR'),
+            description=f'Categoría "{instance.name}" eliminada ({materials_count} material(es) afectado(s))',
+        )
+        instance.delete()
+
     @action(detail=True, methods=['get'])
     def check_delete(self, request, pk=None):
         category = self.get_object()

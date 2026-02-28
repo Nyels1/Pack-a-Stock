@@ -16,3 +16,9 @@ redis
 django-celery-beat
 gunicorn
 whitenoise
+
+# Biometric facial recognition
+insightface==0.7.3
+onnxruntime
+opencv-python-headless
+numpy

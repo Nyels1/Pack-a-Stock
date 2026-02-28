@@ -27,7 +27,7 @@ class LoanRequest(models.Model):
     # Fechas y motivo
     requested_date = models.DateTimeField(auto_now_add=True)
     desired_pickup_date = models.DateField()
-    desired_return_date = models.DateField()
+    desired_return_date = models.DateField(null=True, blank=True)
     purpose = models.TextField(blank=True, null=True, help_text="Propósito del préstamo")
 
     # Estado y revisión
@@ -283,7 +283,7 @@ class Loan(models.Model):
     @property
     def is_overdue(self):
         """Verifica si el préstamo está vencido (solo no-consumibles)"""
-        if self.is_consumable_loan:
+        if self.is_consumable_loan or not self.expected_return_date:
             return False
         return self.status == 'active' and self.expected_return_date < timezone.now().date()
 

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'loans',
     'audit',
     'labels',
+    'biometrics',
 ]
 
 MIDDLEWARE = [
@@ -226,6 +227,9 @@ SIMPLE_JWT = {
 # CORS Settings
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://localhost:5173').split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 # Security Settings para producción
 if not DEBUG:

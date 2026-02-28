@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
+import uuid
 
 
 class Account(models.Model):
@@ -32,9 +33,20 @@ class Account(models.Model):
     subscription_start_date = models.DateField(null=True, blank=True)
     subscription_end_date = models.DateField(null=True, blank=True)
     
+    # Código único para que empleados puedan auto-registrarse en esta cuenta
+    company_code = models.CharField(
+        max_length=12, unique=True, blank=True,
+        help_text="Código de 8 caracteres para registro de empleados"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+    def save(self, *args, **kwargs):
+        if not self.company_code:
+            self.company_code = uuid.uuid4().hex[:8].upper()
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = 'accounts'
         indexes = [
@@ -91,7 +103,8 @@ class User(AbstractBaseUser):
     user_type = models.CharField(max_length=50, choices=USER_TYPE_CHOICES, default='employee')
     
     face_encoding = models.TextField(blank=True, null=True)
-    
+    face_enrolled_at = models.DateTimeField(null=True, blank=True)
+
     is_blocked = models.BooleanField(default=False)
     blocked_reason = models.TextField(blank=True, null=True)
     blocked_until = models.DateTimeField(null=True, blank=True)

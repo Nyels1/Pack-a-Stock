@@ -20,6 +20,8 @@ class AuditLog(models.Model):
         ('extension_rejected', 'Extensión rechazada'),
         ('material_consume', 'Material consumido'),
         ('stock_update', 'Actualización de stock'),
+        ('biometric_enroll', 'Registro biométrico'),
+        ('biometric_verify_fail', 'Verificación biométrica fallida'),
     ]
     
     account = models.ForeignKey(

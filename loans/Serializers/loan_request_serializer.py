@@ -37,7 +37,8 @@ class LoanRequestCreateSerializer(serializers.ModelSerializer):
         child=serializers.DictField(),
         write_only=True
     )
-    
+    desired_return_date = serializers.DateField(required=False, allow_null=True)
+
     class Meta:
         model = LoanRequest
         fields = [

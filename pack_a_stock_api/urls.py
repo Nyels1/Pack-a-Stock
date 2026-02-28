@@ -10,12 +10,16 @@ from django.conf.urls.static import static
 from accounts.routers import router as accounts_router
 from materials.routers import router as materials_router
 from loans.routers import router as loans_router
+from audit.routers import router as audit_router
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Authentication endpoints
     path('api/auth/', include('accounts.urls')),
+
+    # Biometric facial recognition
+    path('api/auth/biometrics/', include('biometrics.urls')),
 
     # Admin panel endpoints (superusers only)
     path('api/admin/', include('accounts.admin_urls')),
@@ -24,6 +28,7 @@ urlpatterns = [
     path('api/accounts/', include(accounts_router.urls)),
     path('api/materials/', include(materials_router.urls)),
     path('api/loans/', include(loans_router.urls)),
+    path('api/audit/', include(audit_router.urls)),
     
     # Autenticación REST Framework
     path('api-auth/', include('rest_framework.urls')),

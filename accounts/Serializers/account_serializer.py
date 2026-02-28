@@ -6,7 +6,7 @@ class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = [
-            'id', 'company_name', 'street', 'exterior_number', 'interior_number',
+            'id', 'company_name', 'company_code', 'street', 'exterior_number', 'interior_number',
             'neighborhood', 'postal_code', 'city', 'state', 'country', 'phone',
             'email', 'logo', 'subscription_plan', 'max_locations', 'max_users', 'is_active',
             'subscription_start_date', 'subscription_end_date', 'created_at', 'updated_at'

@@ -105,9 +105,6 @@ class LoginSerializer(serializers.Serializer):
             
             if not user.is_active:
                 raise serializers.ValidationError('Usuario inactivo')
-            
-            if user.is_blocked:
-                raise serializers.ValidationError('Usuario bloqueado')
         else:
             raise serializers.ValidationError('Email y contraseña son requeridos')
         

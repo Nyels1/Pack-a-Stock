@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from loans.models import LoanRequest
 from loans.Serializers.loan_request_serializer import (
     LoanRequestSerializer,
@@ -33,8 +34,20 @@ class LoanRequestViewSet(viewsets.ModelViewSet):
         return LoanRequestSerializer
     
     def perform_create(self, serializer):
-        account = self.request.user.account
-        serializer.save(account=account, requester=self.request.user)
+        user = self.request.user
+        if user.is_blocked:
+            raise PermissionDenied('No puedes crear solicitudes mientras tengas una penalización activa.')
+        serializer.save(account=user.account, requester=user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Return full data (id, qr_token, status, etc.) instead of the create serializer
+        full_serializer = LoanRequestSerializer(
+            serializer.instance, context={'request': request}
+        )
+        return Response(full_serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
