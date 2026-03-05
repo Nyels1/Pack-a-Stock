@@ -284,9 +284,21 @@ def register_employee_view(request):
 
     current_users = User.objects.filter(account=account).count()
     if account.max_users != -1 and current_users >= account.max_users:
+        if account.subscription_plan == 'freemium':
+            msg = (
+                f'Tu administrador no cuenta con un plan avanzado. '
+                f'El plan gratuito solo permite {account.max_users} usuarios. '
+                f'Pide a tu administrador que actualice su suscripción.'
+            )
+        else:
+            msg = (
+                f'La empresa ha alcanzado el límite de su plan '
+                f'({account.max_users} usuarios). Contacta a tu administrador.'
+            )
         return Response({
             'success': False,
-            'errors': {'company_code': ['La cuenta ha alcanzado el límite de usuarios de su plan']}
+            'message': msg,
+            'errors': {'company_code': [msg]}
         }, status=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(
