@@ -43,6 +43,11 @@ class MaterialCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = []
 
+    def create(self, validated_data):
+        # available_quantity debe coincidir con quantity al crear
+        validated_data['available_quantity'] = validated_data.get('quantity', 1)
+        return super().create(validated_data)
+
 
 class MaterialMinimalSerializer(serializers.ModelSerializer):
     """Serializer ligero para listados"""
