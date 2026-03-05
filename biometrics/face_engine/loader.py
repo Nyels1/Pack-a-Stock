@@ -22,7 +22,7 @@ def get_model():
         logger.info(f'Cargando modelo ArcFace con providers: {providers}')
 
         app = FaceAnalysis(name='buffalo_l', providers=providers)
-        app.prepare(ctx_id=0, det_size=(640, 640))
+        app.prepare(ctx_id=0, det_size=(320, 320))
         _model_instance = app
         logger.info('Modelo ArcFace cargado correctamente')
         return _model_instance
