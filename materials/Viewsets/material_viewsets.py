@@ -35,6 +35,13 @@ class MaterialViewSet(viewsets.ModelViewSet):
         account = self.request.user.account
         serializer.save(account=account)
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        new_quantity = serializer.validated_data.get('quantity', instance.quantity)
+        diff = new_quantity - instance.quantity
+        new_available = max(0, instance.available_quantity + diff)
+        serializer.save(available_quantity=new_available)
+
     def perform_destroy(self, instance):
         from audit.models import AuditLog
         from loans.models import Loan
