@@ -23,7 +23,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        return Material.objects.filter(account=user.account)
+        return Material.objects.filter(account=user.account).select_related('category', 'location', 'account')
     
     def get_serializer_class(self):
         if self.action == 'create':
