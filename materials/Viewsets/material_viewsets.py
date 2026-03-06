@@ -16,6 +16,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
     queryset = Material.objects.all()
     serializer_class = MaterialSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
     filterset_fields = ['category', 'location', 'status', 'is_available_for_loan', 'is_active']
     search_fields = ['name', 'description', 'sku', 'barcode', 'qr_code']
     ordering_fields = ['name', 'sku', 'quantity', 'available_quantity', 'created_at']
