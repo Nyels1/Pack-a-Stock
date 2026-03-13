@@ -1,0 +1,55 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    booleanParam(name: 'SKIP_PULL', defaultValue: false, description: 'Skip git pull in deploy script')
+  }
+
+  environment {
+    PROJECT_ROOT = '/srv/pack-a-stock-prod'
+    COMPOSE_FILE = 'docker-compose.ionos.yml'
+  }
+
+  stages {
+    stage('Preflight') {
+      steps {
+        sh '''
+          set -e
+          echo "== Host resources =="
+          free -h
+          df -h /
+          docker version
+        '''
+      }
+    }
+
+    stage('Deploy') {
+      steps {
+        sh '''
+          set -e
+          chmod +x devops/scripts/deploy_packastock.sh
+          PROJECT_ROOT="$PROJECT_ROOT" COMPOSE_FILE="$COMPOSE_FILE" SKIP_PULL="$SKIP_PULL" \
+            devops/scripts/deploy_packastock.sh
+        '''
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'Deploy completed successfully.'
+    }
+    failure {
+      echo 'Deploy failed. Check console output.'
+    }
+    always {
+      sh 'docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+    }
+  }
+}

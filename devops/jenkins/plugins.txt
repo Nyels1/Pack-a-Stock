@@ -1,0 +1,7 @@
+workflow-aggregator
+git
+github
+credentials
+ssh-agent
+pipeline-stage-view
+blueocean
