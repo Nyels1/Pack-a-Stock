@@ -37,7 +37,40 @@ echo "[deploy] Current service status"
 "${COMPOSE_CMD[@]}" -f "${COMPOSE_FILE}" ps
 
 echo "[deploy] Health checks"
-curl -fsS http://127.0.0.1:8001/admin/login/ >/dev/null
-curl -fsS http://127.0.0.1:3003 >/dev/null
+for i in $(seq 1 30); do
+  if docker exec pas_backend python - <<'PY'
+import sys
+from urllib.request import urlopen
+
+resp = urlopen('http://127.0.0.1:8000/admin/login/', timeout=3)
+sys.exit(0 if 200 <= resp.status < 400 else 1)
+PY
+  then
+    echo "[deploy] Backend check OK"
+    break
+  fi
+
+  if [[ "$i" -eq 30 ]]; then
+    echo "[deploy] ERROR: backend health check failed"
+    exit 1
+  fi
+
+  sleep 2
+done
+
+for i in $(seq 1 30); do
+  if docker exec pas_frontend node -e "fetch('http://127.0.0.1:3000').then(r=>process.exit((r.status>=200&&r.status<400)?0:1)).catch(()=>process.exit(1))"
+  then
+    echo "[deploy] Frontend check OK"
+    break
+  fi
+
+  if [[ "$i" -eq 30 ]]; then
+    echo "[deploy] ERROR: frontend health check failed"
+    exit 1
+  fi
+
+  sleep 2
+done
 
 echo "[deploy] OK"
