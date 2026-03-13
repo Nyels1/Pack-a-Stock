@@ -29,9 +29,13 @@ python manage.py migrate --noinput
 echo "📦 Recolectando archivos estáticos..."
 python manage.py collectstatic --noinput
 
-# Crear superusuario por defecto si no existe
-echo "👤 Verificando superusuario..."
-python manage.py create_superadmin || true
+# Crear superusuario por defecto solo si está explícitamente habilitado
+if [ "${AUTO_CREATE_SUPERADMIN:-false}" = "true" ]; then
+  echo "👤 Verificando superusuario..."
+  python manage.py create_superadmin || true
+else
+  echo "👤 AUTO_CREATE_SUPERADMIN=false, se omite bootstrap de superusuario"
+fi
 
 echo "========================================="
 echo "✅ Configuración completada!"
