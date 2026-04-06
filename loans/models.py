@@ -26,8 +26,8 @@ class LoanRequest(models.Model):
 
     # Fechas y motivo
     requested_date = models.DateTimeField(auto_now_add=True)
-    desired_pickup_date = models.DateField()
-    desired_return_date = models.DateField(null=True, blank=True)
+    desired_pickup_date = models.DateTimeField()
+    desired_return_date = models.DateTimeField(null=True, blank=True)
     purpose = models.TextField(blank=True, null=True, help_text="Propósito del préstamo")
 
     # Estado y revisión
