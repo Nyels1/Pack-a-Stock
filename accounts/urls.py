@@ -13,6 +13,7 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('register-employee/', views.register_employee_view, name='register_employee'),
     path('login/', views.login_view, name='login'),
+    path('firebase/', views.firebase_auth_view, name='firebase_auth'),
     path('logout/', views.logout_view, name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

@@ -102,6 +102,8 @@ class User(AbstractBaseUser):
     full_name = models.CharField(max_length=255)
     user_type = models.CharField(max_length=50, choices=USER_TYPE_CHOICES, default='employee')
     
+    firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
+
     face_encoding = models.TextField(blank=True, null=True)
     face_enrolled_at = models.DateTimeField(null=True, blank=True)
 

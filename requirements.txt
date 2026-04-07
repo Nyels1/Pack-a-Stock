@@ -16,6 +16,7 @@ redis
 django-celery-beat
 gunicorn
 whitenoise
+firebase-admin
 
 # Biometric facial recognition
 insightface==0.7.3

@@ -366,3 +366,194 @@ def change_password_view(request):
 
 # Importaciones faltantes
 from rest_framework.exceptions import PermissionDenied, ValidationError
+
+
+# ─── Firebase Auth ────────────────────────────────────────────────────────────
+
+def _init_firebase():
+    """Inicializa Firebase Admin SDK una sola vez."""
+    import firebase_admin
+    if not firebase_admin._apps:
+        import os
+        from django.conf import settings
+        from firebase_admin import credentials as fb_credentials
+        cred_path = os.path.join(settings.BASE_DIR, 'firebase-credentials.json')
+        cred = fb_credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def firebase_auth_view(request):
+    """
+    Login / registro mediante Firebase (Google o email/password de Firebase).
+    POST /api/auth/firebase/
+    Body: {
+        firebase_token: str,           # ID token de Firebase (obligatorio)
+        user_type: str,                # 'inventarista' | 'employee' (solo para registro)
+        company_name: str,             # obligatorio si user_type='inventarista' y es nuevo
+        company_code: str,             # obligatorio si user_type='employee' y es nuevo
+        full_name: str,                # opcional, se toma de Firebase si no se envía
+    }
+    """
+    import firebase_admin
+    from firebase_admin import auth as fb_auth
+
+    firebase_token = request.data.get('firebase_token', '').strip()
+    if not firebase_token:
+        return Response({'success': False, 'message': 'firebase_token es obligatorio'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    # Inicializar Firebase Admin
+    try:
+        _init_firebase()
+    except Exception as e:
+        return Response({'success': False, 'message': f'Error al inicializar Firebase: {str(e)}'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Verificar el token con Firebase
+    try:
+        decoded = fb_auth.verify_id_token(firebase_token)
+    except fb_auth.ExpiredIdTokenError:
+        return Response({'success': False, 'message': 'Token de Firebase expirado'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+    except Exception:
+        return Response({'success': False, 'message': 'Token de Firebase inválido'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
+    firebase_uid = decoded['uid']
+    email = decoded.get('email', '').lower().strip()
+    firebase_name = decoded.get('name', '') or request.data.get('full_name', '')
+
+    # ── Buscar usuario existente ──────────────────────────────────────────────
+    user = User.objects.filter(firebase_uid=firebase_uid).first()
+
+    if not user and email:
+        user = User.objects.filter(email=email).first()
+        if user:
+            # Vincular firebase_uid al usuario existente
+            user.firebase_uid = firebase_uid
+            user.save(update_fields=['firebase_uid'])
+
+    # ── Login (usuario ya existe) ─────────────────────────────────────────────
+    if user:
+        refresh = RefreshToken.for_user(user)
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+        return Response({
+            'success': True,
+            'data': {
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }
+            }
+        }, status=status.HTTP_200_OK)
+
+    # ── Registro (usuario nuevo) ──────────────────────────────────────────────
+    user_type = request.data.get('user_type', '').strip()
+    company_name = request.data.get('company_name', '').strip()
+    company_code = request.data.get('company_code', '').strip().upper()
+
+    if not email:
+        return Response({
+            'success': False,
+            'message': 'La cuenta de Firebase no tiene email asociado'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if not user_type:
+        # No hay usuario y no se enviaron datos de registro — pedir al frontend
+        return Response({
+            'success': False,
+            'code': 'USER_NOT_FOUND',
+            'message': 'Usuario no registrado. Completa tu registro.',
+            'email': email,
+            'full_name': firebase_name,
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    if user_type == 'inventarista':
+        if not company_name:
+            return Response({
+                'success': False,
+                'message': 'El nombre de la empresa es obligatorio'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if Account.objects.filter(email=email).exists():
+            return Response({
+                'success': False,
+                'message': 'Ya existe una cuenta con ese email. Intenta iniciar sesión.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        account = Account.objects.create(
+            company_name=company_name,
+            email=email,
+        )
+        user = User.objects.create_user(
+            email=email,
+            password=None,
+            full_name=firebase_name or email,
+            user_type='inventarista',
+            account=account,
+            firebase_uid=firebase_uid,
+        )
+
+    elif user_type == 'employee':
+        if not company_code:
+            return Response({
+                'success': False,
+                'code': 'NEEDS_COMPANY_CODE',
+                'message': 'Se requiere el código de empresa para registrarse como empleado',
+                'email': email,
+                'full_name': firebase_name,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            account = Account.objects.get(company_code=company_code, is_active=True)
+        except Account.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Código de empresa inválido o cuenta inactiva'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        current_users = User.objects.filter(account=account).count()
+        if account.max_users != -1 and current_users >= account.max_users:
+            return Response({
+                'success': False,
+                'message': f'La empresa alcanzó el límite de {account.max_users} usuarios.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(email=email).exists():
+            return Response({
+                'success': False,
+                'message': 'Ya existe una cuenta con ese email'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.create_user(
+            email=email,
+            password=None,
+            full_name=firebase_name or email,
+            user_type='employee',
+            account=account,
+            firebase_uid=firebase_uid,
+        )
+    else:
+        return Response({
+            'success': False,
+            'message': 'user_type debe ser inventarista o employee'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    refresh = RefreshToken.for_user(user)
+    user.last_login = timezone.now()
+    user.save(update_fields=['last_login'])
+
+    return Response({
+        'success': True,
+        'data': {
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            }
+        }
+    }, status=status.HTTP_201_CREATED)

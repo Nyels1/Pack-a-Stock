@@ -12,7 +12,20 @@ class MaterialSerializer(serializers.ModelSerializer):
     is_low_stock = serializers.ReadOnlyField()
     can_be_loaned = serializers.ReadOnlyField()
     needs_reorder = serializers.ReadOnlyField()
-    
+    next_available_date = serializers.SerializerMethodField()
+
+    def get_next_available_date(self, obj):
+        if obj.available_quantity > 0:
+            return None
+        from loans.models import Loan
+        loan = Loan.objects.filter(
+            material=obj,
+            status__in=['active', 'overdue'],
+            is_consumable_loan=False,
+            expected_return_date__isnull=False
+        ).order_by('expected_return_date').values_list('expected_return_date', flat=True).first()
+        return loan
+
     class Meta:
         model = Material
         fields = [
@@ -21,11 +34,12 @@ class MaterialSerializer(serializers.ModelSerializer):
             'quantity', 'available_quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image', 'image_url', 'status', 'is_available_for_loan',
             'requires_facial_auth', 'is_active', 'is_consumable', 'is_low_stock',
-            'can_be_loaned', 'needs_reorder', 'created_at', 'updated_at'
+            'can_be_loaned', 'needs_reorder', 'next_available_date', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'account', 'qr_code', 'qr_image', 'available_quantity', 'is_consumable',
-            'is_low_stock', 'can_be_loaned', 'needs_reorder', 'created_at', 'updated_at'
+            'is_low_stock', 'can_be_loaned', 'needs_reorder', 'next_available_date',
+            'created_at', 'updated_at'
         ]
 
 
@@ -55,6 +69,19 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(source='location.name', read_only=True)
     category = CategorySerializer(read_only=True)
     location = LocationSerializer(read_only=True)
+    next_available_date = serializers.SerializerMethodField()
+
+    def get_next_available_date(self, obj):
+        if obj.available_quantity > 0:
+            return None
+        from loans.models import Loan
+        loan = Loan.objects.filter(
+            material=obj,
+            status__in=['active', 'overdue'],
+            is_consumable_loan=False,
+            expected_return_date__isnull=False
+        ).order_by('expected_return_date').values_list('expected_return_date', flat=True).first()
+        return loan
 
     class Meta:
         model = Material
@@ -62,5 +89,6 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
             'id', 'name', 'sku', 'serial_number', 'qr_code', 'qr_image', 'image',
             'category', 'category_name', 'location', 'location_name',
             'quantity', 'available_quantity', 'status', 'is_available_for_loan', 'is_low_stock',
-            'unit_of_measure', 'min_stock_level', 'description', 'is_consumable'
+            'unit_of_measure', 'min_stock_level', 'description', 'is_consumable',
+            'next_available_date'
         ]
