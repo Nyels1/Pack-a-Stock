@@ -14,6 +14,7 @@ urlpatterns = [
     path('register-employee/', views.register_employee_view, name='register_employee'),
     path('login/', views.login_view, name='login'),
     path('firebase/', views.firebase_auth_view, name='firebase_auth'),
+    path('check-method/', views.check_auth_method_view, name='check_auth_method'),
     path('logout/', views.logout_view, name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

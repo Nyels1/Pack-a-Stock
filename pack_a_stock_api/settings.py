@@ -189,7 +189,7 @@ if USE_S3 or (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY):
         MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
 else:
     # Usar almacenamiento local para desarrollo
-    MEDIA_URL = 'media/'
+    MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type

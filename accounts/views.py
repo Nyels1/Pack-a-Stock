@@ -370,6 +370,29 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 # ─── Firebase Auth ────────────────────────────────────────────────────────────
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def check_auth_method_view(request):
+    """
+    Verifica si un email usa Google Sign-In.
+    POST /api/auth/check-method/
+    Body: { email: str }
+    """
+    email = request.data.get('email', '').strip().lower()
+    if not email:
+        return Response({'success': False, 'message': 'Email requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email=email).first()
+    if not user:
+        return Response({'success': True, 'exists': False})
+
+    return Response({
+        'success': True,
+        'exists': True,
+        'uses_google': bool(user.firebase_uid),
+    })
+
+
 def _init_firebase():
     """Inicializa Firebase Admin SDK una sola vez."""
     import firebase_admin
