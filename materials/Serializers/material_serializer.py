@@ -13,6 +13,11 @@ class MaterialSerializer(serializers.ModelSerializer):
     can_be_loaned = serializers.ReadOnlyField()
     needs_reorder = serializers.ReadOnlyField()
     next_available_date = serializers.SerializerMethodField()
+    is_locked = serializers.SerializerMethodField()
+
+    def get_is_locked(self, obj):
+        locked_ids = self.context.get('locked_location_ids', set())
+        return obj.location_id in locked_ids if obj.location_id else False
 
     def get_next_available_date(self, obj):
         if obj.available_quantity > 0:
@@ -34,12 +39,13 @@ class MaterialSerializer(serializers.ModelSerializer):
             'quantity', 'available_quantity', 'unit_of_measure', 'min_stock_level',
             'reorder_quantity', 'image', 'image_url', 'status', 'is_available_for_loan',
             'requires_facial_auth', 'is_active', 'is_consumable', 'is_low_stock',
-            'can_be_loaned', 'needs_reorder', 'next_available_date', 'created_at', 'updated_at'
+            'can_be_loaned', 'needs_reorder', 'next_available_date', 'is_locked',
+            'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'account', 'qr_code', 'qr_image', 'available_quantity', 'is_consumable',
             'is_low_stock', 'can_be_loaned', 'needs_reorder', 'next_available_date',
-            'created_at', 'updated_at'
+            'is_locked', 'created_at', 'updated_at'
         ]
 
 
@@ -70,6 +76,11 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     location = LocationSerializer(read_only=True)
     next_available_date = serializers.SerializerMethodField()
+    is_locked = serializers.SerializerMethodField()
+
+    def get_is_locked(self, obj):
+        locked_ids = self.context.get('locked_location_ids', set())
+        return obj.location_id in locked_ids if obj.location_id else False
 
     def get_next_available_date(self, obj):
         if obj.available_quantity > 0:
@@ -90,5 +101,5 @@ class MaterialMinimalSerializer(serializers.ModelSerializer):
             'category', 'category_name', 'location', 'location_name',
             'quantity', 'available_quantity', 'status', 'is_available_for_loan', 'is_low_stock',
             'unit_of_measure', 'min_stock_level', 'description', 'is_consumable',
-            'next_available_date'
+            'next_available_date', 'is_locked'
         ]

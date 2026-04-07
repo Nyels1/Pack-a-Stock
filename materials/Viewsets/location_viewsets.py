@@ -17,7 +17,27 @@ class LocationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Location.objects.filter(account=user.account)
+        return Location.objects.filter(account=user.account).order_by('created_at')
+
+    def _get_locked_ids(self, account):
+        """Retorna el set de IDs de ubicaciones bloqueadas por exceder el límite del plan.
+        Las más recientes (por created_at) son las que se bloquean primero."""
+        if account.max_locations == -1:
+            return set()
+        ids = list(
+            Location.objects.filter(account=account)
+            .order_by('created_at')
+            .values_list('id', flat=True)
+        )
+        if len(ids) <= account.max_locations:
+            return set()
+        return set(ids[account.max_locations:])
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.user.is_authenticated:
+            context['locked_ids'] = self._get_locked_ids(self.request.user.account)
+        return context
 
     def perform_create(self, serializer):
         account = self.request.user.account

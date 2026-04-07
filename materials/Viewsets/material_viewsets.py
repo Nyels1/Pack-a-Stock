@@ -24,7 +24,26 @@ class MaterialViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return Material.objects.filter(account=user.account).select_related('category', 'location', 'account')
-    
+
+    def _get_locked_location_ids(self, account):
+        from materials.models import Location
+        if account.max_locations == -1:
+            return set()
+        ids = list(
+            Location.objects.filter(account=account)
+            .order_by('created_at')
+            .values_list('id', flat=True)
+        )
+        if len(ids) <= account.max_locations:
+            return set()
+        return set(ids[account.max_locations:])
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.user.is_authenticated:
+            context['locked_location_ids'] = self._get_locked_location_ids(self.request.user.account)
+        return context
+
     def get_serializer_class(self):
         if self.action == 'create':
             return MaterialCreateSerializer
