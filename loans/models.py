@@ -172,7 +172,7 @@ class Loan(models.Model):
     
     # Fechas
     issued_at = models.DateTimeField(auto_now_add=True)
-    expected_return_date = models.DateField(null=True, blank=True)  # Null para consumibles
+    expected_return_date = models.DateTimeField(null=True, blank=True)  # Null para consumibles
     actual_return_date = models.DateTimeField(null=True, blank=True)
     
     # Autenticación facial
@@ -226,7 +226,7 @@ class Loan(models.Model):
         
         # Actualizar estado a vencido si pasó la fecha de retorno (solo no-consumibles)
         if not self.is_consumable_loan and self.status == 'active' and self.expected_return_date:
-            if self.expected_return_date < timezone.now().date():
+            if self.expected_return_date < timezone.now():
                 self.status = 'overdue'
         
         super().save(*args, **kwargs)
@@ -285,14 +285,14 @@ class Loan(models.Model):
         """Verifica si el préstamo está vencido (solo no-consumibles)"""
         if self.is_consumable_loan or not self.expected_return_date:
             return False
-        return self.status == 'active' and self.expected_return_date < timezone.now().date()
+        return self.status == 'active' and self.expected_return_date < timezone.now()
 
     @property
     def days_until_return(self):
         """Días hasta la fecha de retorno (negativo si está vencido)"""
         if self.is_consumable_loan or not self.expected_return_date:
             return 0
-        delta = self.expected_return_date - timezone.now().date()
+        delta = self.expected_return_date - timezone.now()
         return delta.days
 
     @property
@@ -316,7 +316,7 @@ class LoanExtension(models.Model):
     
     # Solicitud
     requested_at = models.DateTimeField(auto_now_add=True)
-    new_return_date = models.DateField()
+    new_return_date = models.DateTimeField()
     reason = models.TextField()
     
     # Revisión

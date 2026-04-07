@@ -29,6 +29,8 @@ class LoanExtensionSerializer(serializers.ModelSerializer):
 
 
 class LoanExtensionCreateSerializer(serializers.ModelSerializer):
+    new_return_date = serializers.DateTimeField()
+
     class Meta:
         model = LoanExtension
         fields = ['loan', 'new_return_date', 'reason']

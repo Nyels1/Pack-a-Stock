@@ -33,6 +33,8 @@ class LoanSerializer(serializers.ModelSerializer):
 
 
 class LoanCreateSerializer(serializers.ModelSerializer):
+    expected_return_date = serializers.DateTimeField(required=False, allow_null=True)
+
     class Meta:
         model = Loan
         fields = [
@@ -62,11 +64,11 @@ class LoanCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_expected_return_date(self, value):
-        """La fecha de devolución no puede ser anterior a hoy"""
+        """La fecha de devolución no puede ser anterior a ahora"""
         from django.utils import timezone
-        if value and value < timezone.now().date():
+        if value and value < timezone.now():
             raise serializers.ValidationError(
-                "La fecha de devolución no puede ser anterior a hoy"
+                "La fecha de devolución no puede ser anterior a ahora"
             )
         return value
 
