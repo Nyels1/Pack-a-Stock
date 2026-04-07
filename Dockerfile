@@ -25,7 +25,7 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Crear directorios para archivos estáticos y media
-RUN mkdir -p /app/staticfiles /app/media
+RUN mkdir -p /app/staticfiles /app/media && touch /app/firebase-credentials.json
 
 # Copiar y dar permisos al script de entrada
 COPY entrypoint.sh /entrypoint.sh
