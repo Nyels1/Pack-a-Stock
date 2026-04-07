@@ -1,0 +1,10 @@
+firebase-credentials.json
+packastock-firebase-adminsdk-*.json
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.env
+.env.*
+media/
+*.log
