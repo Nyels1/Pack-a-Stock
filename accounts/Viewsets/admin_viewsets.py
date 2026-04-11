@@ -131,3 +131,37 @@ def admin_users(request):
         'success': True,
         'data': serializer.data
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperUser])
+def admin_toggle_user(request, pk):
+    """Block or unblock a user"""
+    try:
+        user = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response({'success': False, 'message': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    action = request.data.get('action')  # 'block' or 'unblock'
+    if action == 'block':
+        user.is_active = False
+        user.save()
+        return Response({'success': True, 'message': 'Usuario bloqueado'})
+    elif action == 'unblock':
+        user.is_active = True
+        user.save()
+        return Response({'success': True, 'message': 'Usuario desbloqueado'})
+    return Response({'success': False, 'message': 'Accion invalida'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsSuperUser])
+def admin_delete_account(request, pk):
+    """Delete an account and all its data"""
+    try:
+        account = Account.objects.get(pk=pk)
+    except Account.DoesNotExist:
+        return Response({'success': False, 'message': 'Cuenta no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    company_name = account.company_name
+    account.delete()
+    return Response({'success': True, 'message': f'Cuenta {company_name} eliminada'})
