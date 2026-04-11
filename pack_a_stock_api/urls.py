@@ -13,7 +13,7 @@ from loans.routers import router as loans_router
 from audit.routers import router as audit_router
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('django-admin/', admin.site.urls),
     
     # Authentication endpoints
     path('api/auth/', include('accounts.urls')),
